@@ -224,8 +224,8 @@ namespace ForTheCompany.Systems
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             // WebGL: StreamingAssets의 레이싱 HTML을 iframe으로 표시.
-            // Unity가 키 입력을 독점하면 iframe 조작 불가 → 잠시 해제.
-            WebGLInput.captureAllKeyboardInput = false;
+            // iframe에 포커스가 가면 키 입력은 iframe 문서로만 가므로 Unity 키 캡처를 끌 필요가 없다.
+            // (WebGLInput은 Unity 6 웹 빌드 컴파일 참조에 없어 쓰면 빌드가 실패한다)
             RacingIframe_Show(Application.streamingAssetsPath + "/security-race.html");
             IsShowing = true;
 #else
@@ -252,8 +252,7 @@ namespace ForTheCompany.Systems
         public void Hide()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            RacingIframe_Hide();
-            WebGLInput.captureAllKeyboardInput = true; // 키 입력을 Unity로 복귀
+            RacingIframe_Hide(); // 캔버스로 포커스를 돌려 키 입력을 Unity로 복귀
             IsShowing = false;
 #else
             if (canvasRoot == null) return;
@@ -434,11 +433,10 @@ namespace ForTheCompany.Systems
         {
             if (Instance == this) Instance = null;
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // iframe은 씬과 무관한 DOM이라 씬이 바뀌어도 남는다 — 떠 있으면 닫고 키 입력을 Unity로 복귀
+            // iframe은 씬과 무관한 DOM이라 씬이 바뀌어도 남는다 — 떠 있으면 닫고 포커스를 캔버스로 복귀
             if (IsShowing)
             {
                 RacingIframe_Hide();
-                WebGLInput.captureAllKeyboardInput = true;
                 IsShowing = false;
             }
 #endif
