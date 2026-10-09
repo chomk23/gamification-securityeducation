@@ -15,13 +15,20 @@ mergeInto(LibraryManager.library, {
         'border:2px solid #a78bfa;background:#000;z-index:9999;';
       document.body.appendChild(f);
 
-      // 레이싱 HTML → postMessage({type:'securityRaceFinished', rank}) 수신 (최초 1회 등록)
+      // 레이싱 HTML → postMessage 수신 (최초 1회 등록)
+      //   {type:'securityRaceFinished', rank} — 레이스 종료(rank 0 = 미완주)
+      //   {type:'securityRaceCancel'}         — 닫기 버튼 / ESC
       window.addEventListener('message', function (e) {
+        // 레이싱 iframe이 보낸 메시지만 처리 — 콘솔이나 다른 프레임이 보낸 위조 결과 차단
+        if (e.source !== f.contentWindow) return;
         var d = e.data;
-        if (d && d.type === 'securityRaceFinished') {
-          try { SendMessage('RacingWebViewBridge', 'OnRaceFinishedFromJs', d.rank | 0); }
-          catch (err) { console.warn('[RacingIframe] SendMessage 실패:', err); }
-        }
+        if (!d) return;
+        try {
+          if (d.type === 'securityRaceFinished')
+            SendMessage('RacingWebViewBridge', 'OnRaceFinishedFromJs', d.rank | 0);
+          else if (d.type === 'securityRaceCancel')
+            SendMessage('RacingWebViewBridge', 'OnRaceCancelFromJs');
+        } catch (err) { console.warn('[RacingIframe] SendMessage 실패:', err); }
       });
     }
     f.src = url;

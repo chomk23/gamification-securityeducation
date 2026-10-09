@@ -735,9 +735,23 @@
       box-shadow: 0 0 18px var(--neon-pink);
       transform: translateY(-2px);
     }
+    /* 웹(iframe) 임베드 전용 닫기 버튼 — 게임 페이지가 ESC를 못 받으므로 여기서 닫는다 */
+    .embed-close {
+      display: none;
+      position: fixed; top: 10px; right: 10px; z-index: 50;
+      padding: 8px 12px;
+      background: var(--bg-deep);
+      color: var(--neon-cyan);
+      border: 2px solid var(--neon-cyan);
+      font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 700;
+      cursor: pointer;
+    }
+    .embed-close:hover { box-shadow: 0 0 12px var(--neon-cyan); }
   </style>
 </head>
 <body>
+
+<button id="embed-close" class="embed-close" onclick="requestClose()">✕ 닫기 (ESC)</button>
 
 <div class="container">
 
@@ -1022,6 +1036,8 @@ let ai2BoostUntil = 0, ai2NextBoostAt = 0;
 const AI_BOOST_MULT = 1.7;
 let raceRunning = false;
 let raceStart = 0, lastFrame = 0;
+// 결승선 통과 시각 (0 = 아직 미통과) — 순위는 위치가 아니라 먼저 들어온 순서로 정한다
+let playerFinishAt = 0, ai1FinishAt = 0, ai2FinishAt = 0;
 let correctCount = 0, totalAnswered = 0;
 let questionPool = [];
 let currentQIdx = 0;
@@ -1155,6 +1171,7 @@ function setupWorld() {
 
 function startRace() {
   playerPos = ai1Pos = ai2Pos = 0;
+  playerFinishAt = ai1FinishAt = ai2FinishAt = 0;
   cameraX = cameraY = 0;
   correctCount = 0;
   totalAnswered = 0;
@@ -1212,6 +1229,9 @@ function loop(now) {
   const ai2Speed = ai2Boosting ? AI2_SPEED * AI_BOOST_MULT : AI2_SPEED;
   ai1Pos = Math.min(100, ai1Pos + ai1Speed * dt);
   ai2Pos = Math.min(100, ai2Pos + ai2Speed * dt);
+  if (playerPos >= 100 && !playerFinishAt) playerFinishAt = now;
+  if (ai1Pos >= 100 && !ai1FinishAt) ai1FinishAt = now;
+  if (ai2Pos >= 100 && !ai2FinishAt) ai2FinishAt = now;
 
   document.getElementById('ai1').classList.toggle('boosting-ai', ai1Boosting);
   document.getElementById('ai2').classList.toggle('boosting-ai', ai2Boosting);
@@ -1325,6 +1345,7 @@ function answer(idx) {
     buttons[idx].classList.add('correct');
     correctCount++;
     playerPos = Math.min(100, playerPos + CORRECT_JUMP);
+    if (playerPos >= 100 && !playerFinishAt) playerFinishAt = performance.now();
     playerBoostUntil = performance.now() + BOOST_DURATION;
     const player = document.getElementById('player');
     player.classList.add('speed-burst');
@@ -1362,12 +1383,21 @@ function endRace() {
   if (finished) sfxFinish();
   else sfxLose();
 
+  // 완주한 차는 결승선 통과 시각 순, 미완주 차는 진행률 순으로 뒤에 둔다.
+  // (위치는 100%에서 멈추므로 위치만 비교하면 늦게 들어와도 동률 → 1등이 되던 문제)
   const positions = [
-    { name: 'YOU', pos: playerPos },
-    { name: 'AI 1', pos: ai1Pos },
-    { name: 'AI 2', pos: ai2Pos },
-  ].sort((a, b) => b.pos - a.pos);
+    { name: 'YOU',  pos: playerPos, at: playerFinishAt },
+    { name: 'AI 1', pos: ai1Pos,    at: ai1FinishAt },
+    { name: 'AI 2', pos: ai2Pos,    at: ai2FinishAt },
+  ].sort((a, b) => {
+    if (a.at && b.at) return a.at - b.at;
+    if (a.at) return -1;
+    if (b.at) return 1;
+    return b.pos - a.pos;
+  });
   const myRank = positions.findIndex(p => p.name === 'YOU') + 1;
+  // 미완주(TIME UP)는 앞서 있어도 클리어가 아니므로 Unity에는 0(미완주)으로 보고
+  const reportRank = finished ? myRank : 0;
 
   let finalScore, subText, bigTitle;
   if (finished) {
@@ -1397,13 +1427,14 @@ function endRace() {
   document.getElementById('final-progress').textContent = Math.round(playerPos) + '%';
   document.getElementById('final-correct').textContent = `${correctCount}/${totalAnswered}`;
   document.getElementById('rank-info').textContent =
-    `RANK ${myRank} / 3   ·   ` + positions.map(p => `${p.name} ${Math.round(p.pos)}%`).join(' · ');
+    (finished ? `RANK ${myRank} / 3` : 'DNF (미완주)') + '   ·   ' +
+    positions.map(p => `${p.name} ${Math.round(p.pos)}%`).join(' · ');
 
   // Unity Web Browser 임베드 환경에서 등수를 Unity 측으로 전달
   // (uwb 객체는 UWB 엔진이 자동 주입; 외부 브라우저에선 undefined라 무시됨)
   try {
     if (typeof uwb !== 'undefined' && uwb.ExecuteJsMethod) {
-      uwb.ExecuteJsMethod('OnRaceFinished', myRank);
+      uwb.ExecuteJsMethod('OnRaceFinished', reportRank);
     }
   } catch (e) { /* 외부 브라우저 환경 */ }
 
@@ -1411,9 +1442,28 @@ function endRace() {
   // (RacingIframe.jslib의 message 리스너가 SendMessage로 Unity에 전달)
   try {
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'securityRaceFinished', rank: myRank }, '*');
+      window.parent.postMessage({ type: 'securityRaceFinished', rank: reportRank }, '*');
     }
   } catch (e) { /* standalone 환경 */ }
+}
+
+// ── 웹(iframe) 임베드: 닫기 버튼 + ESC → 부모(Unity WebGL 페이지)에 취소 알림 ──
+// iframe이 키 포커스를 가져가 Unity가 ESC를 못 받으므로 여기서 처리한다.
+const IN_IFRAME = (() => {
+  try { return window.parent && window.parent !== window; } catch (e) { return true; }
+})();
+
+function requestClose() {
+  if (!IN_IFRAME) return;
+  raceRunning = false;
+  try { window.parent.postMessage({ type: 'securityRaceCancel' }, '*'); } catch (e) {}
+}
+
+if (IN_IFRAME) {
+  document.getElementById('embed-close').style.display = 'block';
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+  });
 }
 </script>
 

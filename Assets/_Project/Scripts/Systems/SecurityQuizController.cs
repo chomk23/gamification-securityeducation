@@ -71,6 +71,8 @@ namespace ForTheCompany.Systems
         public void Open(ClueObject clue)
         {
             if (clue == null || clue.Resolved) return;
+            var gs = GameSession.Instance;
+            if (gs != null && gs.Outcome != RunOutcome.Ongoing) return; // 결과창 뒤에서 열리지 않게
 
             // 풀에서 중복 없이 3개 랜덤 선택 → 첫 문제 적용
             sessionQuizzes = QuizPool.GetRandomBatch(clue.data.id, QuestionsPerSession);
@@ -98,6 +100,20 @@ namespace ForTheCompany.Systems
         {
             ActiveClue = null;
             sessionQuizzes = null;
+        }
+
+        /// <summary>게임이 끝났을 때(결과창) 진행 중인 세션을 보상·통계 없이 닫는다.
+        /// 열린 채 두면 결과창 밑에 숨은 선택지가 결과창 클릭을 먼저 가져간다.</summary>
+        public void ForceCloseForRunEnd()
+        {
+            if (ActiveClue == null) return;
+            ActiveClue = null;
+            sessionQuizzes = null;
+            sessionSuccessClues.Clear();
+            ShowingExplanation = false;
+            HintRevealed = false;
+            CurrentQuestionMissed = false;
+            LastResultText = "";
         }
 
         public void Answer(int index)

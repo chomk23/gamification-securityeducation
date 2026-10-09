@@ -25,11 +25,19 @@ namespace ForTheCompany.Systems
         private GUIStyle quizButtonStyle;
 
         public static bool IsInventoryOpen { get; private set; }
-        // 인벤토리를 ESC로 닫은 프레임 — 같은 프레임에 PauseMenu가 그 ESC로 열리는 것 방지
+        // 이 HUD가 ESC로 창(인벤토리·지목창·레이싱)을 닫은 프레임 — 같은 프레임에 PauseMenu가 그 ESC로 열리는 것 방지
         // (FacilityHUD/PauseMenu 실행 순서와 무관하게 ESC 1회=닫기만 되도록)
-        public static int InventoryClosedFrame { get; private set; } = -1;
+        public static int EscConsumedFrame { get; private set; } = -1;
         private Vector2 inventoryScroll;
         private Vector2 endWrongScroll; // 결과창 오답 노트 스크롤
+        private bool runEndCleanupDone;  // 결과창 진입 시 남은 창 정리 1회
+
+        private void Awake()
+        {
+            // static이라 재시작·씬 이동 후에도 남는다 — 새 판은 항상 닫힌 상태로 시작
+            IsInventoryOpen = false;
+            EscConsumedFrame = -1;
+        }
 
         // ───── 인벤토리/모달 라이트(흰색) 테마 색 팔레트 ─────
         // 보안 교육 모달과 동일한 톤 — 흰 패널 + 검은 글자, 의미 색은 흰 배경 대비 진하게.
@@ -71,6 +79,28 @@ namespace ForTheCompany.Systems
                 normal = { textColor = Color.white }
             };
             GUI.Label(rect, text.ToUpper(), style);
+        }
+
+        /// <summary>
+        /// 모달 안 남은 시간 표시 — 퀴즈·지목창·수사 보드가 떠 있으면 상단 HUD(시계)가 숨겨지지만
+        /// 타이머는 계속 흐르므로, 시간을 못 본 채 시간 초과되지 않게 모달 헤더에 같이 그린다.
+        /// </summary>
+        private static void DrawModalTimer(Rect r, bool lightTheme, TextAnchor align, int fontSize)
+        {
+            var s = GameSession.Instance;
+            if (s == null) return;
+            float t = s.TimeRemaining;
+            int sec = Mathf.Max(0, Mathf.CeilToInt(t));
+            Color c = t <= 30f ? (lightTheme ? LtDanger : UITheme.Danger)
+                    : t <= 60f ? (lightTheme ? LtYellow : UITheme.NeonYellow)
+                    : (lightTheme ? LtCyan : UITheme.NeonCyan);
+            var st = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = fontSize, fontStyle = FontStyle.Bold,
+                alignment = align,
+                normal = { textColor = c }
+            };
+            GUI.Label(r, $"남은 시간 {sec / 60:D2}:{sec % 60:D2}", st);
         }
 
         private void Init()
@@ -165,10 +195,15 @@ namespace ForTheCompany.Systems
                     IsInventoryOpen = false;
                     // ESC로 닫은 경우, 같은 프레임에 PauseMenu가 그 ESC로 열리지 않도록 표시
                     if (kb.escapeKey.wasPressedThisFrame)
-                        InventoryClosedFrame = Time.frameCount;
+                        EscConsumedFrame = Time.frameCount;
                 }
                 return;
             }
+
+            // 일시정지 메뉴 / 오프닝 컷씬 중엔 열지 않음 (메뉴 뒤에서 열린 채 남는 것 방지)
+            var pm = PauseMenu.Instance;
+            if (pm != null && pm.IsOpen) return;
+            if (IntroMonologue.IsCutsceneActive) return;
 
             // 다른 모달 떠 있으면 토글 무시
             var partner = FindPartner();
@@ -1101,6 +1136,8 @@ namespace ForTheCompany.Systems
         {
             var ctrl = SecurityQuizController.Instance;
             if (ctrl == null) return;
+            var gsEnd = GameSession.Instance;
+            if (gsEnd != null && gsEnd.Outcome != RunOutcome.Ongoing) return; // 결과창이 우선
             // Show result toast (briefly)
             if (!ctrl.IsOpen && !string.IsNullOrEmpty(ctrl.LastResultText)
                 && Time.time - ctrl.LastResultTime < 3.5f && ctrl.LastWasCorrect)
@@ -1167,6 +1204,8 @@ namespace ForTheCompany.Systems
                 normal = { textColor = dangerDark }
             };
             GUI.Label(new Rect(x, y, w, barH), "▸ 필수 미션 // 정답 시 자동 종료", lockedSt);
+            // 좌상단(dot 오른쪽) — 남은 시간
+            DrawModalTimer(new Rect(x + 76, y, 200, barH), true, TextAnchor.MiddleLeft, 13);
 
             // ── 헤더 섹션 ──
             float headerY = y + barH + 16;
@@ -1420,12 +1459,20 @@ namespace ForTheCompany.Systems
 
         private void Update()
         {
+            var s = GameSession.Instance;
+            if (s != null && s.Outcome != RunOutcome.Ongoing && !runEndCleanupDone)
+                CloseAllModalsForRunEnd();
+
             var kb = Keyboard.current;
             if (kb == null) return;
+            bool esc = kb.escapeKey.wasPressedThisFrame;
 
             var partner = FindPartner();
-            if (partner != null && partner.IsMenuOpen && kb.escapeKey.wasPressedThisFrame)
+            if (partner != null && partner.IsMenuOpen && esc)
+            {
                 partner.Close();
+                EscConsumedFrame = Time.frameCount;
+            }
 
             // 인벤토리 토글 (I) — 다른 모달 없을 때만
             HandleInventoryToggle(kb);
@@ -1433,20 +1480,44 @@ namespace ForTheCompany.Systems
             var rmc = RacingMissionController.Instance;
             if (rmc != null)
             {
-                if (rmc.CurrentPhase == RacingMissionController.Phase.AwaitingRank
-                    && kb.escapeKey.wasPressedThisFrame)
+                if (rmc.CurrentPhase == RacingMissionController.Phase.AwaitingRank && esc)
+                {
                     rmc.Cancel();
+                    EscConsumedFrame = Time.frameCount;
+                }
                 else if (rmc.CurrentPhase == RacingMissionController.Phase.Finished
-                    && (kb.spaceKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame
-                        || kb.enterKey.wasPressedThisFrame))
+                    && (kb.spaceKey.wasPressedThisFrame || esc || kb.enterKey.wasPressedThisFrame))
+                {
                     rmc.Acknowledge();
+                    if (esc) EscConsumedFrame = Time.frameCount;
+                }
             }
 
-            var s = GameSession.Instance;
             if (s != null && s.Outcome != RunOutcome.Ongoing)
             {
                 if (kb.rKey.wasPressedThisFrame) Restart();
                 else if (kb.mKey.wasPressedThisFrame) ReturnToMenu();
+            }
+        }
+
+        /// <summary>
+        /// 결과창이 뜨는 순간 남아 있는 창(퀴즈·대화·수사 보드·지목창·레이싱)을 모두 닫는다.
+        /// IMGUI는 먼저 그린 버튼이 클릭을 먼저 받기 때문에, 결과창 밑에 남은 버튼이
+        /// RESTART/MAIN MENU 클릭을 가로채고 결과창 통계까지 바꿔버린다.
+        /// </summary>
+        private void CloseAllModalsForRunEnd()
+        {
+            runEndCleanupDone = true;
+            IsInventoryOpen = false;
+            SecurityQuizController.Instance?.ForceCloseForRunEnd();
+            var ds = DialogueSystem.Instance;
+            if (ds != null && ds.IsActive) ds.ForceClose();
+            FindPartner()?.Close();
+            var rmc = RacingMissionController.Instance;
+            if (rmc != null)
+            {
+                rmc.Cancel();       // 레이스 진행 중이면 보상 없이 닫기 (WebView/iframe 포함)
+                rmc.Acknowledge();  // 결과 확인 대기 중이면 닫기
             }
         }
 
@@ -1609,6 +1680,8 @@ namespace ForTheCompany.Systems
             };
             GUI.Label(new Rect(x + 40, headerY + 18, w - 80, 32),
                 "산업스파이 지목", titleSt);
+            // 우측 — 남은 시간 (고민하다 시계를 못 본 채 시간 초과되지 않게)
+            DrawModalTimer(new Rect(x + 40, headerY + 18, w - 80, 32), false, TextAnchor.MiddleRight, 18);
 
             // 본문 설명 (한 줄)
             var bodySt = new GUIStyle(GUI.skin.label)
@@ -1841,6 +1914,10 @@ namespace ForTheCompany.Systems
             UITheme.DrawBorder(rect, accent, 1f);
             UITheme.DrawWinBar(new Rect(x, y, w, 32), "mission-result.dossier");
 
+            // 화면이 낮으면(웹 기본 600px 등) 위쪽 여백을 줄인다 — 고정 블록 합(614px)이
+            // 패널보다 크면 오답 노트 높이가 음수가 되고 버튼이 다른 내용 위에 겹친다.
+            bool compact = h < 740f;
+
             // ── 상태 태그 ──
             float headerY = y + 50;
             UITheme.DrawPulseDot(new Vector2(x + 28, headerY + 14), accent, 5f);
@@ -1857,11 +1934,11 @@ namespace ForTheCompany.Systems
             // ── 메인 결과 라벨 (좀 작게) ──
             var bigSt = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 48, fontStyle = FontStyle.Bold,
+                fontSize = compact ? 40 : 48, fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = accent }
             };
-            GUI.Label(new Rect(x, y + 80, w, 64), win ? "VICTORY" : "DEFEAT", bigSt);
+            GUI.Label(new Rect(x, y + (compact ? 70 : 80), w, compact ? 52 : 64), win ? "VICTORY" : "DEFEAT", bigSt);
 
             // 부제 한국어
             var subKoSt = new GUIStyle(GUI.skin.label)
@@ -1870,10 +1947,10 @@ namespace ForTheCompany.Systems
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = UITheme.InkDim }
             };
-            GUI.Label(new Rect(x, y + 140, w, 22), win ? "사건 해결" : "조사 실패", subKoSt);
+            GUI.Label(new Rect(x, y + (compact ? 122 : 140), w, 22), win ? "사건 해결" : "조사 실패", subKoSt);
 
             // ── 통계 패널 ──
-            float statsY = y + 178;
+            float statsY = y + (compact ? 150 : 178);
             float statsH = 180;
             var statsRect = new Rect(x + 30, statsY, w - 60, statsH);
             UITheme.DrawRect(statsRect, UITheme.Bg2);
@@ -1891,9 +1968,10 @@ namespace ForTheCompany.Systems
             // 통계 행들 (좌측 라벨, 우측 값)
             DrawStatRow(statsRect, 0, "▸ 사용 시간", $"{em:D2}:{es:D2}", UITheme.NeonCyan);
             DrawStatRow(statsRect, 1, "▸ 단서 총 수집", $"{total}개", UITheme.NeonGreen);
-            DrawStatRow(statsRect, 2, "▸ NPC 증언", $"{npcCnt}개",
+            // 위 '단서 총 수집'은 보상 점수 합(상단 HUD와 동일)이고, 아래 두 줄은 수사 보드에 쌓인 카드 수
+            DrawStatRow(statsRect, 2, "▸ 수사 보드 카드 · NPC 대화", $"{npcCnt}장",
                 npcCnt > 0 ? UITheme.NeonCyan : UITheme.InkFaint);
-            DrawStatRow(statsRect, 3, "▸ 보안 교육 모듈", $"{envCnt}개",
+            DrawStatRow(statsRect, 3, "▸ 수사 보드 카드 · 보안 교육", $"{envCnt}장",
                 envCnt > 0 ? UITheme.NeonYellow : UITheme.InkFaint);
             DrawStatRow(statsRect, 4, "▸ 보안 문제 (첫 시도)",
                 $"{s.quizFirstTryCorrect} 맞음 · {s.quizWrongCount} 틀림",
@@ -1912,30 +1990,36 @@ namespace ForTheCompany.Systems
 
             // ── 모티브 박스 (서사적 동기) ──
             float motiveY = msgY + 28;
-            float motiveH = 110;
-            var motiveRect = new Rect(x + 30, motiveY, w - 60, motiveH);
-            UITheme.DrawRect(motiveRect, UITheme.Bg2);
-            UITheme.DrawBorder(motiveRect, accent, 1f);
-            // 좌측 강조 띠
-            UITheme.DrawRect(new Rect(motiveRect.x, motiveRect.y, 3f, motiveH), accent);
-
-            var motiveTagSt = new GUIStyle(GUI.skin.label)
+            float motiveH = compact ? 86f : 110f;
+            const float minReviewH = 60f;
+            // 그래도 공간이 모자라면 동기 박스를 생략 — 오답 노트와 버튼이 우선
+            bool showMotive = (y + h - 70) - (motiveY + motiveH + 38) >= minReviewH;
+            if (showMotive)
             {
-                fontSize = 11, fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleLeft,
-                normal = { textColor = accent }
-            };
-            GUI.Label(new Rect(motiveRect.x + 14, motiveRect.y + 6, motiveRect.width - 28, 22),
-                "▸ MOTIVE // 유출 동기", motiveTagSt);
+                var motiveRect = new Rect(x + 30, motiveY, w - 60, motiveH);
+                UITheme.DrawRect(motiveRect, UITheme.Bg2);
+                UITheme.DrawBorder(motiveRect, accent, 1f);
+                // 좌측 강조 띠
+                UITheme.DrawRect(new Rect(motiveRect.x, motiveRect.y, 3f, motiveH), accent);
 
-            var motiveBodySt = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 12, wordWrap = true,
-                alignment = TextAnchor.UpperLeft,
-                normal = { textColor = UITheme.Ink }
-            };
-            GUI.Label(new Rect(motiveRect.x + 16, motiveRect.y + 30, motiveRect.width - 32, motiveH - 36),
-                motiveText, motiveBodySt);
+                var motiveTagSt = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 11, fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleLeft,
+                    normal = { textColor = accent }
+                };
+                GUI.Label(new Rect(motiveRect.x + 14, motiveRect.y + 6, motiveRect.width - 28, 22),
+                    "▸ MOTIVE // 유출 동기", motiveTagSt);
+
+                var motiveBodySt = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 12, wordWrap = true,
+                    alignment = TextAnchor.UpperLeft,
+                    normal = { textColor = UITheme.Ink }
+                };
+                GUI.Label(new Rect(motiveRect.x + 16, motiveRect.y + 30, motiveRect.width - 32, motiveH - 36),
+                    motiveText, motiveBodySt);
+            }
 
             // ── 결과 메시지 (간단히) ──
             var bodySt = new GUIStyle(GUI.skin.label)
@@ -1944,12 +2028,13 @@ namespace ForTheCompany.Systems
                 alignment = TextAnchor.UpperCenter,
                 normal = { textColor = UITheme.InkDim }
             };
-            GUI.Label(new Rect(x + 40, motiveY + motiveH + 6, w - 80, 28),
+            float messageY = showMotive ? motiveY + motiveH + 6 : motiveY;
+            GUI.Label(new Rect(x + 40, messageY, w - 80, 28),
                 s.OutcomeMessage, bodySt);
 
             // ── 오답 노트 — 틀렸던 보안 문제 해설 ──
-            float reviewY = motiveY + motiveH + 38;
-            float reviewH = (y + h - 70) - reviewY;
+            float reviewY = messageY + 32;
+            float reviewH = Mathf.Max(40f, (y + h - 70) - reviewY);
             var reviewRect = new Rect(x + 30, reviewY, w - 60, reviewH);
             UITheme.DrawRect(reviewRect, UITheme.Bg2);
             UITheme.DrawBorder(reviewRect, UITheme.Line, 1f);
@@ -2115,6 +2200,7 @@ namespace ForTheCompany.Systems
             if (!IsInventoryOpen) return;
             var s = GameSession.Instance;
             if (s == null) return;
+            if (s.Outcome != RunOutcome.Ongoing) return; // 결과창이 우선
 
             // ── 풀스크린 어둠 (배경은 어둡게, 패널만 흰색으로 부각) ──
             UITheme.DrawRect(new Rect(0, 0, Screen.width, Screen.height),
@@ -2176,6 +2262,8 @@ namespace ForTheCompany.Systems
             };
             GUI.Label(new Rect(x, headerY + 6, w, 22),
                 "// [I] 또는 [ESC] 닫기", hintSt);
+            // 닫기 안내 왼쪽 — 남은 시간
+            DrawModalTimer(new Rect(x, headerY + 6, w - 200, 22), true, TextAnchor.MiddleRight, 13);
 
             UITheme.DrawRect(new Rect(x + 24, headerY + 66, w - 48, 1), LtLine);
 

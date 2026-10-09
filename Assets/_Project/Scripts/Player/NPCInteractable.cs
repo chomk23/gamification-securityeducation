@@ -22,8 +22,10 @@ namespace ForTheCompany.Player
 
         public Vector3 InteractPosition => transform.position;
         public float InteractRadius => interactRadius;
-        public bool CanInteract => GameSession.Instance == null
-            || GameSession.Instance.Outcome == RunOutcome.Ongoing;
+        // 첫 대화 → 보안교육 모듈로 넘어가는 중엔 재대화 불가 (빈틈에 '차례 아님' 대사가 끼어들어 퀴즈와 겹침)
+        public bool CanInteract => !quizFlowPending
+            && (GameSession.Instance == null || GameSession.Instance.Outcome == RunOutcome.Ongoing);
+        private bool quizFlowPending;
         public string PromptText => HasBeenTalkedTo
             ? $"Space: {DisplayName} 다시 대화"
             : $"Space: {DisplayName}와 대화";
@@ -154,12 +156,14 @@ namespace ForTheCompany.Player
         {
             string clueId = GetRelatedClueId();
             if (string.IsNullOrEmpty(clueId)) yield break;
+            quizFlowPending = true;
 
             // 첫 대화창 완전히 닫힘 대기
             yield return new WaitForSeconds(0.4f);
 
-            // 다른 모달이 떠 있으면 중단
-            if (IsAnyBlockingModalOpen()) yield break;
+            // 다른 창이 떠 있으면 닫힐 때까지 대기 — 여기서 중단하면 이 방의 보안교육(결정적 단서 포함)을 다시 열 방법이 없다
+            yield return WaitUntilNoBlockingModal();
+            if (IsRunOver()) { quizFlowPending = false; yield break; }
 
             string[] transitionLines = GetTransitionLines(Actor != null && Actor.isSpy);
             var ds = DialogueSystem.Instance;
@@ -181,7 +185,9 @@ namespace ForTheCompany.Player
         {
             yield return new WaitForSeconds(0.5f);
 
-            if (IsAnyBlockingModalOpen()) yield break;
+            yield return WaitUntilNoBlockingModal();
+            quizFlowPending = false;
+            if (IsRunOver()) yield break;
 
             var sqc = SecurityQuizController.Instance;
             if (sqc == null) yield break;
@@ -199,12 +205,31 @@ namespace ForTheCompany.Player
             }
         }
 
+        private IEnumerator WaitUntilNoBlockingModal()
+        {
+            while (IsAnyBlockingModalOpen() && !IsRunOver())
+                yield return null;
+        }
+
+        private static bool IsRunOver()
+        {
+            var s = GameSession.Instance;
+            return s != null && s.Outcome != RunOutcome.Ongoing;
+        }
+
         private bool IsAnyBlockingModalOpen()
         {
             var sqc = SecurityQuizController.Instance;
             if (sqc != null && sqc.IsOpen) return true;
             var rmc = RacingMissionController.Instance;
             if (rmc != null && rmc.IsOpen) return true;
+            var ds = DialogueSystem.Instance;
+            if (ds != null && ds.IsActive) return true;
+            if (FacilityHUD.IsInventoryOpen) return true;
+            var pm = PauseMenu.Instance;
+            if (pm != null && pm.IsOpen) return true;
+            var partner = AccusationPartner.Instance;
+            if (partner != null && partner.IsMenuOpen) return true;
             return false;
         }
 
@@ -383,7 +408,7 @@ namespace ForTheCompany.Player
                                 "이상한 거 하나 잡혔어요. 시설관리자 단말에서 외부 서버 IP로 트래픽이 나갔어요.",
                                 "권한상 그분은 외부 통신 안 되는데, 우회한 흔적이 있어요. CCTV 점검 시간이랑 정확히 겹쳐요.",
                                 "보안 카드키 발급 권한 가진 분이라 시스템 접근도 쉬웠을 거예요.",
-                                "데이터센터 트래픽 단말도 한번 살펴봐 주세요. 외부 IP 흔적이 거기 잡혀요."
+                                "서버실 모니터 로그도 한번 살펴봐 주세요. 외부 IP 흔적이 거기 잡혀요."
                             };
                     }
                     break;

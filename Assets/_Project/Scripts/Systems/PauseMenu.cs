@@ -21,8 +21,10 @@ namespace ForTheCompany.Systems
         // 마지막 timeScale 백업 (복귀 시 복원)
         private float pausedTimeScale;
 
-        // 소리 볼륨 (0~1) — 기본 30% (효과음이 너무 크지 않게)
-        private static float volume = 0.3f;
+        // 소리 볼륨 (0~1) — 기본 30% (효과음이 너무 크지 않게). PlayerPrefs에 저장해 재실행 후에도 유지.
+        public const string VolumePrefKey = "ftc.masterVolume";
+        public const float DefaultVolume = 0.3f;
+        private static float volume = -1f; // -1 = 아직 저장값을 읽지 않음
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -46,7 +48,15 @@ namespace ForTheCompany.Systems
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
+            if (volume < 0f) volume = PlayerPrefs.GetFloat(VolumePrefKey, DefaultVolume);
             AudioListener.volume = volume;
+        }
+
+        private static void SetVolume(float v)
+        {
+            volume = Mathf.Clamp01(v);
+            AudioListener.volume = volume;
+            PlayerPrefs.SetFloat(VolumePrefKey, volume); // 디스크 기록은 메뉴를 닫거나 나갈 때(PlayerPrefs.Save)
         }
 
         private void Update()
@@ -57,9 +67,9 @@ namespace ForTheCompany.Systems
             // 다른 모달이 떠있으면 ESC는 그쪽이 처리하므로 PauseMenu는 가만히
             if (!IsOpen && IsAnyOtherModalOpen()) return;
 
-            // 인벤토리를 방금(같은 프레임) ESC로 닫았으면 그 ESC로 메뉴를 열지 않음
-            // (FacilityHUD가 먼저 실행돼 인벤토리를 닫아버린 경우의 실행 순서 race 방지)
-            if (!IsOpen && FacilityHUD.InventoryClosedFrame == Time.frameCount) return;
+            // 인벤토리·지목창·레이싱 창을 방금(같은 프레임) ESC로 닫았으면 그 ESC로 메뉴를 열지 않음
+            // (FacilityHUD가 먼저 실행돼 창을 닫아버린 경우의 실행 순서 race 방지)
+            if (!IsOpen && FacilityHUD.EscConsumedFrame == Time.frameCount) return;
 
             if (kb.escapeKey.wasPressedThisFrame)
             {
@@ -110,6 +120,7 @@ namespace ForTheCompany.Systems
         {
             IsOpen = false;
             Time.timeScale = pausedTimeScale > 0f ? pausedTimeScale : 1f;
+            PlayerPrefs.Save(); // 볼륨 설정 저장
         }
 
         private void OnGUI()
@@ -251,9 +262,11 @@ namespace ForTheCompany.Systems
 
             GUI.Label(new Rect(x + 32, bodyY, w - 64, 22),
                 "▸ 목표", sectionSt);
+            int limitMin = GameSession.Instance != null
+                ? Mathf.RoundToInt(GameSession.Instance.totalTime / 60f) : 15;
             GUI.Label(new Rect(x + 32, bodyY + 22, w - 64, 50),
                 "당신은 보안조사관. 시설 내 3명의 용의자 중 산업스파이를 찾아내라.\n" +
-                "5분 안에 단서를 모아 보안통제실 동료 수사관에게 가서 정확히 한 번만 지목할 수 있다.", bodySt);
+                $"{limitMin}분 안에 단서를 모아 보안통제실 동료 수사관에게 가서 정확히 한 번만 지목할 수 있다.", bodySt);
 
             GUI.Label(new Rect(x + 32, bodyY + 90, w - 64, 22),
                 "▸ 조작", sectionSt);
@@ -348,32 +361,20 @@ namespace ForTheCompany.Systems
             float newVol = GUI.HorizontalSlider(new Rect(sliderX, sliderY, sliderW, 18),
                 volume, 0f, 1f);
             if (!Mathf.Approximately(newVol, volume))
-            {
-                volume = Mathf.Clamp01(newVol);
-                AudioListener.volume = volume;
-            }
+                SetVolume(newVol);
 
             // 음소거/최대 빠른 버튼
             float btnY = sliderY + 30;
             float btnW = 100, btnH = 32, btnGap = 10;
             if (UITheme.GhostButton(new Rect(x + 32, btnY, btnW, btnH),
                 "▣ 음소거"))
-            {
-                volume = 0f;
-                AudioListener.volume = 0f;
-            }
+                SetVolume(0f);
             if (UITheme.GhostButton(new Rect(x + 32 + btnW + btnGap, btnY, btnW, btnH),
                 "▣ 50%"))
-            {
-                volume = 0.5f;
-                AudioListener.volume = 0.5f;
-            }
+                SetVolume(0.5f);
             if (UITheme.GhostButton(new Rect(x + 32 + (btnW + btnGap) * 2, btnY, btnW, btnH),
                 "▣ 최대"))
-            {
-                volume = 1f;
-                AudioListener.volume = 1f;
-            }
+                SetVolume(1f);
 
             // 닫기 버튼
             if (UITheme.NeonButton(new Rect(x + (w - 240) * 0.5f, y + h - 70, 240, 46),
@@ -477,6 +478,7 @@ namespace ForTheCompany.Systems
         {
             Time.timeScale = 1f;
             IsOpen = false;
+            PlayerPrefs.Save(); // 볼륨 설정 저장
             const string menuScene = "MainMenuScene";
             if (Application.CanStreamedLevelBeLoaded(menuScene))
                 SceneManager.LoadScene(menuScene);
@@ -485,6 +487,7 @@ namespace ForTheCompany.Systems
         private void QuitGame()
         {
             Time.timeScale = 1f;
+            PlayerPrefs.Save(); // 볼륨 설정 저장
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else

@@ -87,6 +87,11 @@ namespace ForTheCompany.EditorTools
             // 어떤 정적 호스팅(서버 설정 불가 환경)에서도 돌아가도록 압축 해제 폴백 사용
             PlayerSettings.WebGL.decompressionFallback = true;
 
+            // 기본 캔버스 960×600은 지목창(단서 전체 표시)·결과창이 들어가기에 낮다.
+            // 높이 680 = 웹사이트 iframe(1280×720) 안에 기본 템플릿 하단 바(38px)까지 함께 들어가는 최대치.
+            PlayerSettings.defaultWebScreenWidth = 1280;
+            PlayerSettings.defaultWebScreenHeight = 680;
+
             var options = new BuildPlayerOptions
             {
                 scenes = scenes,

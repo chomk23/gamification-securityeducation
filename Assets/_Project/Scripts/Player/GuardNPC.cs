@@ -259,8 +259,8 @@ namespace ForTheCompany.Player
                     "1등은 +5 단서, 그 외엔 보상 없이 재도전 가능합니다."),
                 new DialogueChoice(
                     "다른 NPC들도 먼저 만나봐도 됩니까?",
-                    "물론입니다. 다만 보안 레이싱부터 먼저 끝내야 다음 단계로 진행됩니다. " +
-                    "환경 단서는 어디서든 모으실 수 있으니 자유롭게 둘러보셔도 좋습니다.")
+                    "조사는 정해진 순서대로 진행됩니다. 보안 레이싱을 먼저 끝내셔야 " +
+                    "다음 용의자인 네트워크관리자를 만나실 수 있습니다. 그 사이 수사 보드(I)로 단서를 정리해 두세요.")
             };
 
             ds.StartDialogue(displayName, lines, transform,
@@ -302,7 +302,7 @@ namespace ForTheCompany.Player
                         "보안조사관님, 어제 차세대 보안 칩 설계도가 외부로 유출됐습니다. " +
                         "용의자는 셋 — 연구원, 네트워크관리자, 시설관리자.\n" +
                         "먼저 연구실로 가서 연구원과 이야기해보세요. " +
-                        "단서는 미니게임과 환경 조사로 추가 확보할 수 있습니다.";
+                        "단서는 용의자 대화와 보안 교육, 보안 레이싱으로 모을 수 있습니다.";
                 case QuestManager.Stage.MeetResearcher:
                     return "연구실의 연구원에게 먼저 가보세요. 서북쪽에 있습니다.";
                 case QuestManager.Stage.GuardCheckIn:

@@ -85,8 +85,9 @@ namespace ForTheCompany.Player
             var sqc = ForTheCompany.Systems.SecurityQuizController.Instance;
             if (sqc != null && sqc.IsOpen) return;
             // 대화창 활성 중이면 DialogueSystem이 E/Space를 직접 처리 — Interactor는 무시
+            // (대화를 닫은 바로 그 프레임의 Space도 무시 — 닫자마자 같은 NPC 대화가 다시 열리는 것 방지)
             var ds = ForTheCompany.Systems.DialogueSystem.Instance;
-            if (ds != null && ds.IsActive) return;
+            if (ds != null && (ds.IsActive || ds.ClosedFrame == Time.frameCount)) return;
             // 인벤토리 열림 중에도 상호작용 차단
             if (ForTheCompany.Systems.FacilityHUD.IsInventoryOpen) return;
             // 일시정지 메뉴 / 오프닝 컷씬 중에도 상호작용 차단 (SPACE 먹통)

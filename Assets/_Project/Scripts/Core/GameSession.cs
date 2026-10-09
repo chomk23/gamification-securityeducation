@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace ForTheCompany.Core
 {
@@ -143,6 +144,8 @@ namespace ForTheCompany.Core
         private void Update()
         {
             if (!TimerActive || Outcome != RunOutcome.Ongoing) return;
+            // 씬을 넘어 살아남는 오브젝트라, 일시정지 메뉴로 메인 메뉴에 나가도 타이머가 계속 흐르던 문제 방지
+            if (SceneManager.GetActiveScene().name != "FacilityScene") return;
             TimeRemaining -= Time.deltaTime;
             if (TimeRemaining <= 0f)
             {

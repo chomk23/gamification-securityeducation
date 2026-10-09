@@ -73,6 +73,9 @@ namespace ForTheCompany.Systems
         public void Launch()
         {
             if (HasCompleted || CurrentPhase != Phase.Inactive) return;
+            if (!IsRunOngoing()) return;
+            var quest = QuestManager.Instance;
+            if (quest != null && quest.CurrentStage != QuestManager.Stage.RacingMission) return;
 
             // 1순위: Unity 임베드 WebView (RacingWebViewCanvas가 씬에 있으면)
             var bridge = RacingWebViewBridge.Instance;
@@ -104,10 +107,19 @@ namespace ForTheCompany.Systems
             }
             else
             {
-                // 1등 못 했으면 그냥 모달 닫고 콘솔 재사용 가능하게
+                // 1등 못 했으면 모달 닫고 콘솔 재사용 가능하게 — 결과는 토스트로 안내
                 Cancel();
+                string result = rank >= 2 ? $"{rank}등으로 들어왔습니다" : "시간 안에 완주하지 못했습니다";
+                PlayerInteractor.Instance?.ShowToast(
+                    $"보안 레이싱 — {result}.\n1등만 클리어됩니다. 휴게실 컴퓨터에서 다시 도전하세요.");
                 Debug.Log($"[Race] HTML에서 {rank}등 신호 — 재시도 가능");
             }
+        }
+
+        private static bool IsRunOngoing()
+        {
+            var s = GameSession.Instance;
+            return s == null || s.Outcome == RunOutcome.Ongoing;
         }
 
         /// <summary>플레이어가 게임 후 Unity로 돌아와 등수 보고 (1/2/3)</summary>
@@ -115,6 +127,8 @@ namespace ForTheCompany.Systems
         {
             if (CurrentPhase != Phase.AwaitingRank) return;
             if (rank < 1 || rank > 3) return;
+            // 시간 초과 등으로 게임이 이미 끝났으면 늦게 도착한 결과는 반영하지 않음
+            if (!IsRunOngoing()) { Cancel(); return; }
 
             FinalRank = rank;
             ClueReward = rank == 1 ? 5 : rank == 2 ? 3 : 1;

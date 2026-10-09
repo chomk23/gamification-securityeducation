@@ -43,6 +43,8 @@ namespace ForTheCompany.Systems
 
         public float OpenTime { get; private set; } // 슬라이드 인 애니메이션용
         public Transform CurrentNPCTransform { get; private set; } // 카메라 줌인 대상
+        // 대화가 끝난 프레임 — 대화를 닫은 Space가 같은 프레임에 상호작용을 다시 여는 것 방지
+        public int ClosedFrame { get; private set; } = -1;
 
         // 선택지 (마지막 라인에서만 표시, 선택 전엔 LineComplete여도 다음 라인 진행 차단)
         public IReadOnlyList<DialogueChoice> CurrentChoices => choices;
@@ -246,6 +248,7 @@ namespace ForTheCompany.Systems
         private void End()
         {
             IsActive = false;
+            ClosedFrame = Time.frameCount;
             lines = null;
             lineSpeakers = null;
             choices = null;
@@ -263,6 +266,7 @@ namespace ForTheCompany.Systems
         public void ForceClose()
         {
             IsActive = false;
+            ClosedFrame = Time.frameCount;
             lines = null;
             lineSpeakers = null;
             choices = null;

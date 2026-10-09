@@ -113,7 +113,7 @@ namespace ForTheCompany.Systems
         {
             if (canvasRoot == null) return;
             // 게임 시작 시 CEF pre-warm 로드 (ready 폴링)
-            StartCoroutine(LoadWhenReady());
+            StartCoroutine(LoadWhenReady(retryOnce: true));
         }
 
         private static string SecurityRaceUrl()
@@ -126,8 +126,10 @@ namespace ForTheCompany.Systems
         /// CEF 엔진이 ready 신호를 보낼 때까지 폴링한 뒤 LoadUrl.
         /// cold start(첫 실행 시 CEF가 늦게 connect)로 빈 화면 뜨던 문제 해결.
         /// ready 속성을 못 찾으면 일정 시간 후 그냥 시도.
+        /// retryOnce: ready 직후 첫 LoadUrl이 가끔 실패하는 콜드 스타트(pre-warm)용 재시도.
+        /// 창을 연 뒤(Show)에는 재시도하지 않는다 — 0.6초 뒤 다시 불러오면 이미 시작한 레이스가 초기화됨.
         /// </summary>
-        private System.Collections.IEnumerator LoadWhenReady()
+        private System.Collections.IEnumerator LoadWhenReady(bool retryOnce)
         {
             string url = SecurityRaceUrl();
 
@@ -149,11 +151,15 @@ namespace ForTheCompany.Systems
             {
                 if (IsClientReady(client))
                 {
-                    // ready 직후 첫 LoadUrl이 가끔 실패하므로 짧게 한 번 더 시도
                     LoadUrlOnClient(url);
                     Debug.Log("[RacingWebView] CEF ready 확인 → LoadUrl");
-                    yield return new WaitForSeconds(0.6f);
-                    if (IsShowing || canvasRoot != null) LoadUrlOnClient(url);
+                    if (retryOnce)
+                    {
+                        // ready 직후 첫 LoadUrl이 가끔 실패하므로 짧게 한 번 더 시도
+                        yield return new WaitForSeconds(0.6f);
+                        // 그 사이 플레이어가 레이싱을 열었으면 진행 중인 화면을 덮어쓰지 않음
+                        if (!IsShowing) LoadUrlOnClient(url);
+                    }
                     yield break;
                 }
                 t += 0.3f;
@@ -239,7 +245,7 @@ namespace ForTheCompany.Systems
 
             // Show 시점에도 ready 폴링 후 LoadUrl — Start() pre-warm이 cold start로 실패했어도 복구.
             // 플레이어가 콘솔 도착 = 게임 시작 후라 CEF가 거의 준비됨 → 빈 화면 방지.
-            StartCoroutine(LoadWhenReady());
+            StartCoroutine(LoadWhenReady(retryOnce: false));
 #endif
         }
 
@@ -409,6 +415,32 @@ namespace ForTheCompany.Systems
 #if UNITY_WEBGL && !UNITY_EDITOR
             Debug.Log($"[RacingWebView] WebGL iframe 등수 수신: {rank}");
             webglRaceCallback?.Invoke(rank);
+#endif
+        }
+
+        /// <summary>
+        /// WebGL 전용 — 레이싱 HTML의 닫기 버튼/ESC (jslib → SendMessage).
+        /// iframe이 키 포커스를 가져가 Unity의 ESC 강제 종료가 동작하지 않으므로 이 경로로 닫는다.
+        /// </summary>
+        public void OnRaceCancelFromJs()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            Debug.Log("[RacingWebView] WebGL iframe 닫기 요청");
+            RacingMissionController.Instance?.Cancel();
+#endif
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // iframe은 씬과 무관한 DOM이라 씬이 바뀌어도 남는다 — 떠 있으면 닫고 키 입력을 Unity로 복귀
+            if (IsShowing)
+            {
+                RacingIframe_Hide();
+                WebGLInput.captureAllKeyboardInput = true;
+                IsShowing = false;
+            }
 #endif
         }
 

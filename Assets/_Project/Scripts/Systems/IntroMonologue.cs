@@ -102,6 +102,11 @@ namespace ForTheCompany.Systems
             // GameSession 플래그 set (재진입 방지)
             var s = GameSession.Instance;
             if (s != null) s.hasShownIntroMonologue = true;
+            // 컷씬·조작키 안내 동안엔 입력이 막히고 시계도 숨겨지므로 제한 시간을 멈춘다
+            // (원래 꺼져 있던 타이머는 다시 켜지 않음 — 에디터에서 FacilityScene을 바로 실행하면
+            //  새 판 초기화 없이 남은 시간 0이라, 켜는 순간 시간 초과 패배가 된다)
+            bool timerWasActive = s != null && s.TimerActive;
+            if (s != null) s.StopTimer();
 
             // ── 2) 페이드 인 시작 (동시에 진행) ──
             StartCoroutine(FadeInRoutine());
@@ -139,9 +144,10 @@ namespace ForTheCompany.Systems
             popupOpenTime = Time.time;
             while (showControlsPopup) yield return null;
 
-            // 컷씬 종료 — 인풋 정상화
+            // 컷씬 종료 — 인풋 정상화 + 제한 시간 시작
             IsCutsceneActive = false;
             rtpc.enabled = true;
+            if (s != null && timerWasActive) s.ResumeTimer();
             Debug.Log("[IntroMonologue] 컷씬 종료 — 플레이어 조작 활성화");
         }
 
