@@ -81,28 +81,6 @@ namespace ForTheCompany.Systems
             GUI.Label(rect, text.ToUpper(), style);
         }
 
-        /// <summary>
-        /// 모달 안 남은 시간 표시 — 퀴즈·지목창·수사 보드가 떠 있으면 상단 HUD(시계)가 숨겨지지만
-        /// 타이머는 계속 흐르므로, 시간을 못 본 채 시간 초과되지 않게 모달 헤더에 같이 그린다.
-        /// </summary>
-        private static void DrawModalTimer(Rect r, bool lightTheme, TextAnchor align, int fontSize)
-        {
-            var s = GameSession.Instance;
-            if (s == null) return;
-            float t = s.TimeRemaining;
-            int sec = Mathf.Max(0, Mathf.CeilToInt(t));
-            Color c = t <= 30f ? (lightTheme ? LtDanger : UITheme.Danger)
-                    : t <= 60f ? (lightTheme ? LtYellow : UITheme.NeonYellow)
-                    : (lightTheme ? LtCyan : UITheme.NeonCyan);
-            var st = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = fontSize, fontStyle = FontStyle.Bold,
-                alignment = align,
-                normal = { textColor = c }
-            };
-            GUI.Label(r, $"남은 시간 {sec / 60:D2}:{sec % 60:D2}", st);
-        }
-
         private void Init()
         {
             if (bigStyle != null) return;
@@ -614,13 +592,12 @@ namespace ForTheCompany.Systems
             var quest = QuestManager.Instance;
 
             int clues = s != null ? s.totalClues : 0;
-            float timeLeft = s != null ? s.TimeRemaining : 0f;
 
             float w = 340f;
             float x = Screen.width - w - 16f;
             float y = 16f;
 
-            // 헤더 + 단서/시간 섹션 높이 고정
+            // 헤더 + 단서 섹션 높이 고정
             float headerH = 32f;
             float statsH = 70f;
             float objectiveH = 0f;
@@ -671,9 +648,8 @@ namespace ForTheCompany.Systems
             GUI.Label(headerRect, "▶ 수사 진행 중", headerSt);
             UITheme.DrawPulseDot(new Vector2(x + w - 18, y + 16), UITheme.NeonGreen, 4f);
 
-            // ── 단서 / 시간 (2열) ──
+            // ── 수집한 단서 (제한 시간 없음 — 남은 시간 칸 제거) ──
             float statsY = y + headerH + 6;
-            float colW = w * 0.5f;
 
             var labelSt = new GUIStyle(GUI.skin.label)
             {
@@ -683,8 +659,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.InkDim }
             };
 
-            // 좌측 — 수집한 단서
-            GUI.Label(new Rect(x, statsY, colW, 16), "수집한 단서", labelSt);
+            GUI.Label(new Rect(x, statsY, w, 16), "수집한 단서", labelSt);
             var clueValSt = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 26, fontStyle = FontStyle.Bold,
@@ -692,23 +667,7 @@ namespace ForTheCompany.Systems
                 padding = new RectOffset(14, 0, 0, 0),
                 normal = { textColor = UITheme.Ink }
             };
-            GUI.Label(new Rect(x, statsY + 18, colW, 36), clues.ToString("D2"), clueValSt);
-
-            // 중앙 세로 구분선
-            UITheme.DrawRect(new Rect(x + colW, statsY + 4, 1, statsH - 12), UITheme.Line);
-
-            // 우측 — 남은 시간
-            var labelRSt = new GUIStyle(labelSt) { padding = new RectOffset(14, 0, 0, 0) };
-            GUI.Label(new Rect(x + colW, statsY, colW, 16), "남은 시간", labelRSt);
-
-            int totalSec = Mathf.Max(0, Mathf.CeilToInt(timeLeft));
-            int mm = totalSec / 60;
-            int ss = totalSec % 60;
-            Color timeCol = timeLeft <= 30f ? UITheme.Danger
-                : timeLeft <= 60f ? UITheme.NeonYellow
-                : UITheme.NeonCyan;
-            var timeValSt = new GUIStyle(clueValSt) { normal = { textColor = timeCol } };
-            GUI.Label(new Rect(x + colW, statsY + 18, colW, 36), $"{mm:D2}:{ss:D2}", timeValSt);
+            GUI.Label(new Rect(x, statsY + 18, w, 36), clues.ToString("D2"), clueValSt);
 
             // ── 현재 목표 섹션 ──
             if (!hasQuest) return;
@@ -1205,8 +1164,6 @@ namespace ForTheCompany.Systems
                 normal = { textColor = dangerDark }
             };
             GUI.Label(new Rect(x, y, w, barH), "▶ 필수 미션 // 정답 시 자동 종료", lockedSt);
-            // 좌상단(dot 오른쪽) — 남은 시간
-            DrawModalTimer(new Rect(x + 76, y, 200, barH), true, TextAnchor.MiddleLeft, 13);
 
             // ── 헤더 섹션 ──
             float headerY = y + barH + 16;
@@ -1681,8 +1638,6 @@ namespace ForTheCompany.Systems
             };
             GUI.Label(new Rect(x + 40, headerY + 18, w - 80, 32),
                 "산업스파이 지목", titleSt);
-            // 우측 — 남은 시간 (고민하다 시계를 못 본 채 시간 초과되지 않게)
-            DrawModalTimer(new Rect(x + 40, headerY + 18, w - 80, 32), false, TextAnchor.MiddleRight, 18);
 
             // 본문 설명 (한 줄)
             var bodySt = new GUIStyle(GUI.skin.label)
@@ -1877,7 +1832,7 @@ namespace ForTheCompany.Systems
             Color accent = win ? UITheme.NeonGreen : UITheme.Danger;
 
             // ── 통계 계산 ──
-            float elapsedSec = Mathf.Max(0f, s.totalTime - s.TimeRemaining);
+            float elapsedSec = s.ElapsedTime;
             int em = Mathf.FloorToInt(elapsedSec / 60f);
             int es = Mathf.FloorToInt(elapsedSec % 60f);
             int total = s.totalClues;
@@ -2263,8 +2218,6 @@ namespace ForTheCompany.Systems
             };
             GUI.Label(new Rect(x, headerY + 6, w, 22),
                 "// [I] 또는 [ESC] 닫기", hintSt);
-            // 닫기 안내 왼쪽 — 남은 시간
-            DrawModalTimer(new Rect(x, headerY + 6, w - 200, 22), true, TextAnchor.MiddleRight, 13);
 
             UITheme.DrawRect(new Rect(x + 24, headerY + 66, w - 48, 1), LtLine);
 

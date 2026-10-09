@@ -127,7 +127,7 @@ namespace ForTheCompany.Systems
         {
             if (CurrentPhase != Phase.AwaitingRank) return;
             if (rank < 1 || rank > 3) return;
-            // 시간 초과 등으로 게임이 이미 끝났으면 늦게 도착한 결과는 반영하지 않음
+            // 게임이 이미 끝났으면(지목 완료) 늦게 도착한 결과는 반영하지 않음
             if (!IsRunOngoing()) { Cancel(); return; }
 
             FinalRank = rank;

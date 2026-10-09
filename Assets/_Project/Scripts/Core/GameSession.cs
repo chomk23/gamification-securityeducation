@@ -40,10 +40,8 @@ namespace ForTheCompany.Core
         public RunOutcome Outcome { get; private set; } = RunOutcome.Ongoing;
         public string OutcomeMessage { get; private set; } = "";
 
-        [Header("Time Limit")]
-        [Tooltip("총 제한 시간(초). 스토리 모드 기본 7분(420초).")]
-        public float totalTime = 900f;  // 15분
-        public float TimeRemaining { get; private set; }
+        // 제한 시간 없음 — 결과창 '사용 시간' 기록용으로 경과 시간만 잰다 (인트로 컷씬 동안은 멈춤)
+        public float ElapsedTime { get; private set; }
         public bool TimerActive { get; private set; }
 
         [Header("Player Stats")]
@@ -139,26 +137,18 @@ namespace ForTheCompany.Core
             WrongQuizzes.Clear();
             hasFacilityCardkey = false;
             hasShownIntroMonologue = false; // 새 런마다 속마음 인트로 다시 보임
-            TimeRemaining = totalTime;
+            ElapsedTime = 0f;
             TimerActive = true;
             // 실제 스파이는 FacilityScene의 NPCRoster가 정하고 spyRoleIndex를 맞춘다 (여기 값은 임시)
-            Debug.Log($"[Session] New run — 시간 {totalTime:F0}초");
+            Debug.Log("[Session] New run");
         }
 
         private void Update()
         {
             if (!TimerActive || Outcome != RunOutcome.Ongoing) return;
-            // 씬을 넘어 살아남는 오브젝트라, 일시정지 메뉴로 메인 메뉴에 나가도 타이머가 계속 흐르던 문제 방지
+            // 씬을 넘어 살아남는 오브젝트라, 메인 메뉴에 나가 있는 동안은 재지 않는다
             if (SceneManager.GetActiveScene().name != "FacilityScene") return;
-            TimeRemaining -= Time.deltaTime;
-            if (TimeRemaining <= 0f)
-            {
-                TimeRemaining = 0f;
-                TimerActive = false;
-                string actualSpy = spyRoleIndex >= 0 && spyRoleIndex < SpyRoleNames.Length
-                    ? SpyRoleNames[spyRoleIndex] : "?";
-                DeclareLose($"시간 초과 — 산업스파이를 잡지 못했습니다. 실제 스파이는 {actualSpy}.");
-            }
+            ElapsedTime += Time.deltaTime;
         }
 
         public void StopTimer() { TimerActive = false; }

@@ -263,11 +263,9 @@ namespace ForTheCompany.Systems
 
             GUI.Label(new Rect(x + 32, bodyY, w - 64, 22),
                 "▶ 목표", sectionSt);
-            int limitMin = GameSession.Instance != null
-                ? Mathf.RoundToInt(GameSession.Instance.totalTime / 60f) : 15;
             GUI.Label(new Rect(x + 32, bodyY + 22, w - 64, 50),
                 "당신은 보안조사관. 시설 내 3명의 용의자 중 산업스파이를 찾아내라.\n" +
-                $"{limitMin}분 안에 단서를 모아 보안통제실 동료 수사관에게 가서 정확히 한 번만 지목할 수 있다.", bodySt);
+                "시간 제한은 없다. 단서를 모아 보안통제실 동료 수사관에게 가서 정확히 한 번만 지목할 수 있다.", bodySt);
 
             GUI.Label(new Rect(x + 32, bodyY + 90, w - 64, 22),
                 "▶ 조작", sectionSt);
