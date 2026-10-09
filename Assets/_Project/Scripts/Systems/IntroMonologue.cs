@@ -197,6 +197,7 @@ namespace ForTheCompany.Systems
         // 가장 위에 그려지도록 GUI.depth 매우 음수
         private void OnGUI()
         {
+            UITheme.ApplyWebFont();
             if (fadeAlpha >= 0.01f)
             {
                 GUI.depth = -10000;
@@ -239,7 +240,7 @@ namespace ForTheCompany.Systems
                 fontSize = 12, fontStyle = FontStyle.Bold,
                 normal = { textColor = violet }
             };
-            GUI.Label(new Rect(x + 30, y + 22, w - 60, 18), "▸ HOW TO PLAY // CONTROLS", tagSt);
+            GUI.Label(new Rect(x + 30, y + 22, w - 60, 18), "▶ HOW TO PLAY // CONTROLS", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -300,7 +301,7 @@ namespace ForTheCompany.Systems
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = violet }
             };
-            GUI.Label(br, "▸ 수사 시작  [Space]", bSt);
+            GUI.Label(br, "▶ 수사 시작  [Space]", bSt);
             if (GUI.Button(br, GUIContent.none, GUIStyle.none))
             {
                 SfxManager.PlayClick();

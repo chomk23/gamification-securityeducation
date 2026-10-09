@@ -55,6 +55,30 @@ namespace ForTheCompany.Systems
             }
         }
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+        private static Font _webFont;
+        private static bool _webFontTried;
+#endif
+
+        /// <summary>
+        /// 웹(WebGL) 빌드용 한글 폰트 지정 — 모든 OnGUI 시작에서 호출.
+        /// 데스크톱은 기본 폰트에 없는 한글을 OS 폰트(맑은 고딕)로 대신 그리지만,
+        /// WebGL은 OS 폰트를 쓸 수 없어 한글이 전혀 표시되지 않는다. 데스크톱에서는 아무것도 하지 않는다.
+        /// 폰트: Resources/Fonts/NotoSansKR-Regular.otf (SIL Open Font License 1.1)
+        /// </summary>
+        public static void ApplyWebFont()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (!_webFontTried)
+            {
+                _webFontTried = true;
+                _webFont = Resources.Load<Font>("Fonts/NotoSansKR-Regular");
+                if (_webFont == null) Debug.LogWarning("[UITheme] 웹용 한글 폰트를 찾지 못함 — 한글이 표시되지 않을 수 있음");
+            }
+            if (_webFont != null && GUI.skin.font != _webFont) GUI.skin.font = _webFont;
+#endif
+        }
+
         /// <summary>색 사각형 그리기 (UI 어디서든 사용)</summary>
         public static void DrawRect(Rect r, Color c)
         {

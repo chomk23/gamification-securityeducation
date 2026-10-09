@@ -126,6 +126,7 @@ namespace ForTheCompany.Systems
         private void OnGUI()
         {
             if (!IsOpen) return;
+            UITheme.ApplyWebFont();
 
             // 어둠 오버레이 + 스캔라인
             UITheme.DrawRect(new Rect(0, 0, Screen.width, Screen.height),
@@ -167,7 +168,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonGreen }
             };
             GUI.Label(new Rect(x + 44, headerY, w - 80, 22),
-                "▸ 시스템 일시정지 // SYSTEM PAUSED", tagSt);
+                "▶ 시스템 일시정지 // SYSTEM PAUSED", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -191,19 +192,19 @@ namespace ForTheCompany.Systems
                 Close();
 
             if (UITheme.GhostButton(new Rect(btnX, btnY + (btnH + gap), btnW, btnH),
-                "▸ 게임 설명"))
+                "▶ 게임 설명"))
                 CurrentPage = Page.Help;
 
             if (UITheme.GhostButton(new Rect(btnX, btnY + (btnH + gap) * 2, btnW, btnH),
-                "▸ 볼륨"))
+                "▶ 볼륨"))
                 CurrentPage = Page.Settings;
 
             if (UITheme.GhostButton(new Rect(btnX, btnY + (btnH + gap) * 3, btnW, btnH),
-                "▸ 라이센스"))
+                "▶ 라이센스"))
                 CurrentPage = Page.License;
 
             if (UITheme.GhostButton(new Rect(btnX, btnY + (btnH + gap) * 4, btnW, btnH),
-                "▸ 메인 메뉴로 돌아가기"))
+                "▶ 메인 메뉴로 돌아가기"))
                 ReturnToMainMenu();
 
             if (UITheme.NeonButton(new Rect(btnX, btnY + (btnH + gap) * 5, btnW, btnH),
@@ -235,7 +236,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonCyan }
             };
             GUI.Label(new Rect(x + 44, headerY, w - 80, 22),
-                "▸ 게임 설명 // BRIEFING", tagSt);
+                "▶ 게임 설명 // BRIEFING", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -261,7 +262,7 @@ namespace ForTheCompany.Systems
             };
 
             GUI.Label(new Rect(x + 32, bodyY, w - 64, 22),
-                "▸ 목표", sectionSt);
+                "▶ 목표", sectionSt);
             int limitMin = GameSession.Instance != null
                 ? Mathf.RoundToInt(GameSession.Instance.totalTime / 60f) : 15;
             GUI.Label(new Rect(x + 32, bodyY + 22, w - 64, 50),
@@ -269,7 +270,7 @@ namespace ForTheCompany.Systems
                 $"{limitMin}분 안에 단서를 모아 보안통제실 동료 수사관에게 가서 정확히 한 번만 지목할 수 있다.", bodySt);
 
             GUI.Label(new Rect(x + 32, bodyY + 90, w - 64, 22),
-                "▸ 조작", sectionSt);
+                "▶ 조작", sectionSt);
             GUI.Label(new Rect(x + 32, bodyY + 112, w - 64, 100),
                 "WASD : 이동   |   SHIFT : 달리기\n" +
                 "마우스 휠 : 줌인/아웃\n" +
@@ -278,7 +279,7 @@ namespace ForTheCompany.Systems
                 "ESC : 일시정지 메뉴 (지금 이 화면)", bodySt);
 
             GUI.Label(new Rect(x + 32, bodyY + 220, w - 64, 22),
-                "▸ 진행 흐름", sectionSt);
+                "▶ 진행 흐름", sectionSt);
             GUI.Label(new Rect(x + 32, bodyY + 242, w - 64, 130),
                 "1. 경비원과 브리핑 → 연구원과 대화 → 보안 교육 모듈 풀기\n" +
                 "2. 휴게실에서 보안 레이싱 게임 1등 하기\n" +
@@ -288,7 +289,7 @@ namespace ForTheCompany.Systems
 
             // 닫기 버튼
             if (UITheme.NeonButton(new Rect(x + (w - 240) * 0.5f, y + h - 70, 240, 46),
-                "◂ 메뉴로 돌아가기", UITheme.NeonCyan))
+                "◀ 메뉴로 돌아가기", UITheme.NeonCyan))
                 CurrentPage = Page.Main;
         }
 
@@ -316,7 +317,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonViolet }
             };
             GUI.Label(new Rect(x + 44, headerY, w - 80, 22),
-                "▸ 볼륨 // VOLUME", tagSt);
+                "▶ 볼륨 // VOLUME", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -337,7 +338,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonGreen }
             };
             GUI.Label(new Rect(x + 32, optY, 200, 22),
-                "▸ 마스터 볼륨", labelSt);
+                "▶ 마스터 볼륨", labelSt);
 
             // 현재 값 표시 (우측)
             var valSt = new GUIStyle(GUI.skin.label)
@@ -378,7 +379,7 @@ namespace ForTheCompany.Systems
 
             // 닫기 버튼
             if (UITheme.NeonButton(new Rect(x + (w - 240) * 0.5f, y + h - 70, 240, 46),
-                "◂ 메뉴로 돌아가기", UITheme.NeonViolet))
+                "◀ 메뉴로 돌아가기", UITheme.NeonViolet))
                 CurrentPage = Page.Main;
         }
 
@@ -406,7 +407,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonYellow }
             };
             GUI.Label(new Rect(x + 44, headerY, w - 80, 22),
-                "▸ 라이센스 // THIRD-PARTY ASSETS", tagSt);
+                "▶ 라이센스 // THIRD-PARTY ASSETS", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -440,11 +441,12 @@ namespace ForTheCompany.Systems
                 ("BGM 3트랙 (메뉴·게임플레이·엔딩)", "Pixabay Content License"),
                 ("UnityWebBrowser by Voltstro-Studios", "MIT License"),
                 ("CEF (Chromium Embedded Framework)", "BSD 3-Clause"),
+                ("Noto Sans KR (웹 버전 한글 폰트)", "SIL Open Font License 1.1"),
                 ("Unity 6 + Universal Render Pipeline", "Unity 엔진"),
             };
 
             float rowY = headerY + 80;
-            float rowH = 40;
+            float rowH = 36; // 8행이 하단 안내·버튼과 겹치지 않게 (40 → 36)
             for (int i = 0; i < entries.Length; i++)
             {
                 var rowRect = new Rect(x + 32, rowY + rowH * i, w - 64, rowH - 6);
@@ -468,7 +470,7 @@ namespace ForTheCompany.Systems
 
             // 닫기 버튼
             if (UITheme.NeonButton(new Rect(x + (w - 240) * 0.5f, y + h - 70, 240, 46),
-                "◂ 메뉴로 돌아가기", UITheme.NeonYellow))
+                "◀ 메뉴로 돌아가기", UITheme.NeonYellow))
                 CurrentPage = Page.Main;
         }
 

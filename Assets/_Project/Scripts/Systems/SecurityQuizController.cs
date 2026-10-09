@@ -128,7 +128,7 @@ namespace ForTheCompany.Systems
             if (!correct)
             {
                 // 오답 — 같은 문제 재시도. 첫 오답이면 통계 기록(결과창 오답 노트용)
-                LastResultText = "✗ 오답. 다시 시도하세요.";
+                LastResultText = "× 오답. 다시 시도하세요.";
                 SfxManager.PlayWrong();
                 if (!CurrentQuestionMissed)
                 {

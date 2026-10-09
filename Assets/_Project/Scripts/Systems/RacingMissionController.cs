@@ -134,9 +134,9 @@ namespace ForTheCompany.Systems
             ClueReward = rank == 1 ? 5 : rank == 2 ? 3 : 1;
             ResultMessage = rank switch
             {
-                1 => $"🥇 1등! 모든 차를 제치고 우승. +{ClueReward} 단서 획득",
-                2 => $"🥈 2등! 결승선 통과. +{ClueReward} 단서 획득",
-                3 => $"🥉 3등! 완주했습니다. +{ClueReward} 단서 획득",
+                1 => $"★ 1등! 모든 차를 제치고 우승. +{ClueReward} 단서 획득",
+                2 => $"☆ 2등! 결승선 통과. +{ClueReward} 단서 획득",
+                3 => $"☆ 3등! 완주했습니다. +{ClueReward} 단서 획득",
                 _ => ""
             };
 

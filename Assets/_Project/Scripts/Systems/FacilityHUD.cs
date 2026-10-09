@@ -227,6 +227,7 @@ namespace ForTheCompany.Systems
 
         private void OnGUI()
         {
+            UITheme.ApplyWebFont();
             Init();
             DrawNPCNameplates();
             DrawMiniMap();        // 좌상단 — 미니맵
@@ -283,7 +284,7 @@ namespace ForTheCompany.Systems
                     normal = { textColor = UITheme.NeonGreen }
                 };
                 GUI.Label(new Rect(nameX, nameY, nameW, nameH),
-                    "▸ " + ds.CurrentSpeaker.ToUpper(), nameStyle);
+                    "▶ " + ds.CurrentSpeaker.ToUpper(), nameStyle);
 
                 // 우측 윈도우 chrome — "transmission.log"
                 var winLabel = new GUIStyle(GUI.skin.label)
@@ -326,7 +327,7 @@ namespace ForTheCompany.Systems
                     padding = new RectOffset(0, 28, 0, 0),
                     normal = { textColor = UITheme.NeonGreen }
                 };
-                string hint = ds.IsLastLine ? "▸ [SPACE] END TRANSMISSION" : "▸ [SPACE] CONTINUE";
+                string hint = ds.IsLastLine ? "▶ [SPACE] END TRANSMISSION" : "▶ [SPACE] CONTINUE";
                 GUI.Label(new Rect(boxX, boxY + boxH - 26, boxW, 18), hint, promptSt);
                 GUI.color = prev;
             }
@@ -379,7 +380,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonCyan }
             };
             GUI.Label(new Rect(boxX, startY - headerH, boxW, 20),
-                "▸ RESPONSE OPTIONS // SELECT ONE", headerSt);
+                "▶ RESPONSE OPTIONS // SELECT ONE", headerSt);
 
             Vector2 mp = UITheme.GetMousePos();
             float currentY = startY;
@@ -496,7 +497,7 @@ namespace ForTheCompany.Systems
                 padding = new RectOffset(14, 0, 0, 0),
                 normal = { textColor = UITheme.NeonGreen }
             };
-            GUI.Label(headerRect, "▸ 시설 평면도 // 실시간", headerSt);
+            GUI.Label(headerRect, "▶ 시설 평면도 // 실시간", headerSt);
             UITheme.DrawPulseDot(new Vector2(panelX + panelW - 18, panelY + 14), UITheme.NeonGreen, 3f);
 
             // 맵 영역 (헤더 제외)
@@ -667,7 +668,7 @@ namespace ForTheCompany.Systems
                 padding = new RectOffset(14, 0, 0, 0),
                 normal = { textColor = UITheme.NeonGreen }
             };
-            GUI.Label(headerRect, "▸ 수사 진행 중", headerSt);
+            GUI.Label(headerRect, "▶ 수사 진행 중", headerSt);
             UITheme.DrawPulseDot(new Vector2(x + w - 18, y + 16), UITheme.NeonGreen, 4f);
 
             // ── 단서 / 시간 (2열) ──
@@ -727,7 +728,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonMagenta }
             };
             GUI.Label(new Rect(x, objY + 4, w - 60, 20),
-                $"▸ 현재 목표 // 단계 {step:D2}", miniHeaderSt);
+                $"▶ 현재 목표 // 단계 {step:D2}", miniHeaderSt);
 
             var ratioSt = new GUIStyle(GUI.skin.label)
             {
@@ -755,7 +756,7 @@ namespace ForTheCompany.Systems
 
             // 위치 힌트
             GUI.Label(new Rect(x + 14, cy + 4, contentW, hintH),
-                "▸ " + quest.CurrentLocationHint, locHintSt);
+                "▶ " + quest.CurrentLocationHint, locHintSt);
         }
 
         // 단계 완료 토스트가 NPC 대화 토스트 종료 후 시작되도록 추적
@@ -830,7 +831,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonGreen }
             };
             GUI.Label(new Rect(x + 36, y + 14, w - 60, 14),
-                "▸ STAGE CLEARED // PROGRESS UPDATED", tagSt);
+                "▶ STAGE CLEARED // PROGRESS UPDATED", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -888,7 +889,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonCyan }
             };
             GUI.Label(new Rect(x + 44, headerY + 2, w - 80, 14),
-                "▸ HIGH-SPEED INFILTRATION // STAGE", tagSt);
+                "▶ HIGH-SPEED INFILTRATION // STAGE", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -927,7 +928,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonCyan }
             };
             GUI.Label(new Rect(x + 28, y, 180, h),
-                "▸ 보안 레이싱 진행 중", tagSt);
+                "▶ 보안 레이싱 진행 중", tagSt);
 
             var hintSt = new GUIStyle(GUI.skin.label)
             {
@@ -956,11 +957,11 @@ namespace ForTheCompany.Systems
             float startY = y + 220;
 
             DrawRankButton(new Rect(x + 30, startY, w - 60, btnH),
-                "▸ 1등 했음 — 클리어 (+5 단서)",
+                "▶ 1등 했음 — 클리어 (+5 단서)",
                 UITheme.NeonGreen, () => rmc.ReportRank(1));
 
             DrawRankButton(new Rect(x + 30, startY + (btnH + gap), w - 60, btnH),
-                "▸ 1등 못 함 — 재시도 (보상 없음)",
+                "▶ 1등 못 함 — 재시도 (보상 없음)",
                 UITheme.InkDim, () => rmc.Cancel());
         }
 
@@ -1019,7 +1020,7 @@ namespace ForTheCompany.Systems
 
             // 확인 버튼
             if (UITheme.NeonButton(new Rect(x + (w - 280) * 0.5f, y + h - 70, 280, 46),
-                "▸ ACKNOWLEDGE  [SPACE / ESC / ENTER]", rankColor))
+                "▶ ACKNOWLEDGE  [SPACE / ESC / ENTER]", rankColor))
                 rmc.Acknowledge();
         }
 
@@ -1203,7 +1204,7 @@ namespace ForTheCompany.Systems
                 padding = new RectOffset(0, 16, 0, 0),
                 normal = { textColor = dangerDark }
             };
-            GUI.Label(new Rect(x, y, w, barH), "▸ 필수 미션 // 정답 시 자동 종료", lockedSt);
+            GUI.Label(new Rect(x, y, w, barH), "▶ 필수 미션 // 정답 시 자동 종료", lockedSt);
             // 좌상단(dot 오른쪽) — 남은 시간
             DrawModalTimer(new Rect(x + 76, y, 200, barH), true, TextAnchor.MiddleLeft, 13);
 
@@ -1217,7 +1218,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = accentViolet }
             };
             GUI.Label(new Rect(x + 48, headerY, w - 120, 16),
-                "▸ SECURITY TRAINING // MODULE", tagSt);
+                "▶ SECURITY TRAINING // MODULE", tagSt);
 
             // 진행률 표시 (1/3, 2/3, 3/3) — 우측 상단
             if (ctrl.SessionTotal > 1)
@@ -1230,7 +1231,7 @@ namespace ForTheCompany.Systems
                     normal = { textColor = greenDark } // 진한 초록 (AA 통과)
                 };
                 GUI.Label(new Rect(x, headerY, w, 26),
-                    $"▸ 문제 {ctrl.SessionCurrent} / {ctrl.SessionTotal}", progressSt);
+                    $"▶ 문제 {ctrl.SessionCurrent} / {ctrl.SessionTotal}", progressSt);
             }
 
             // 큰 타이틀
@@ -1249,7 +1250,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = cyanDark } // 진한 시안 (AA 통과)
             };
             GUI.Label(new Rect(x + 30, headerY + 66, w - 60, 20),
-                $"▸ {data.roomName.ToUpper()}  //  {data.objectLabel.ToUpper()}", locTagSt);
+                $"▶ {data.roomName.ToUpper()}  //  {data.objectLabel.ToUpper()}", locTagSt);
 
             // 구분선
             UITheme.DrawRect(new Rect(x + 28, headerY + 94, w - 56, 1), lineLight);
@@ -1302,9 +1303,9 @@ namespace ForTheCompany.Systems
                 GUI.Label(new Rect(exRect.x + 18, exRect.y + 38, exRect.width - 36, exRect.height - 48),
                     ctrl.CurrentExplanation, exBodySt);
 
-                // [다음 문제 ▸] / [교육 완료] 버튼
+                // [다음 문제 ▶] / [교육 완료] 버튼
                 bool lastQuestion = ctrl.SessionCurrent >= ctrl.SessionTotal;
-                string nbLabel = lastQuestion ? "▸ 교육 완료" : "다음 문제 ▸";
+                string nbLabel = lastQuestion ? "▶ 교육 완료" : "다음 문제 ▶";
                 var nbr = new Rect(x + (w - 260) * 0.5f, y + h - 74, 260, 54);
                 bool nHover = nbr.Contains(UITheme.GetMousePos());
                 UITheme.DrawRect(nbr, nHover ? new Color(0.74f, 0.92f, 0.80f) : new Color(0.88f, 0.96f, 0.90f));
@@ -1374,7 +1375,7 @@ namespace ForTheCompany.Systems
                             normal = { textColor = new Color(0.62f, 0.42f, 0.02f) }
                         };
                         GUI.Label(new Rect(hintRect.x + 16, hintRect.y + 8, hintRect.width - 32, 18),
-                            "▸ 힌트", hintTagSt);
+                            "▶ 힌트", hintTagSt);
 
                         var hintBodySt = new GUIStyle(GUI.skin.label)
                         {
@@ -1398,7 +1399,7 @@ namespace ForTheCompany.Systems
                                 normal = { textColor = dangerDark }
                             };
                             GUI.Label(new Rect(x + 28, y + h - 98, w - 56, 24),
-                                "▸ " + ctrl.LastResultText, feedSt);
+                                "▶ " + ctrl.LastResultText, feedSt);
                         }
 
                         var hbr = new Rect(x + (w - 200) * 0.5f, y + h - 66, 200, 46);
@@ -1411,7 +1412,7 @@ namespace ForTheCompany.Systems
                             alignment = TextAnchor.MiddleCenter,
                             normal = { textColor = new Color(0.62f, 0.42f, 0.02f) }
                         };
-                        GUI.Label(hbr, "▸ 힌트 보기", hbSt);
+                        GUI.Label(hbr, "▶ 힌트 보기", hbSt);
                         if (GUI.Button(hbr, GUIContent.none, GUIStyle.none))
                         {
                             SfxManager.PlayClick();
@@ -1451,7 +1452,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonGreen }
             };
             GUI.Label(new Rect(x + 36, y + 14, w - 60, 14),
-                "▸ CORRECT // SECURITY MODULE PASSED", tagSt);
+                "▶ CORRECT // SECURITY MODULE PASSED", tagSt);
 
             GUI.Label(new Rect(x + 36, y + 36, contentW, contentH),
                 ctrl.LastResultText, bodySt);
@@ -1570,14 +1571,14 @@ namespace ForTheCompany.Systems
             // 좌측 펄스 dot
             UITheme.DrawPulseDot(new Vector2(x + 18, y + h * 0.5f), UITheme.NeonCyan, 3f);
 
-            // 좌측 '▸' 화살표 + 텍스트
+            // 좌측 '▶' 화살표 + 텍스트
             var promptSt = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 14, fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = UITheme.Ink }
             };
-            GUI.Label(rect, "▸ " + prompt, promptSt);
+            GUI.Label(rect, "▶ " + prompt, promptSt);
         }
 
         private void DrawToast()
@@ -1627,7 +1628,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonYellow }
             };
             GUI.Label(new Rect(x + 18, y + 10, w - 36, 16),
-                "▸ INTEL // RELAY", headerSt);
+                "▶ INTEL // RELAY", headerSt);
 
             // 본문
             GUI.Label(new Rect(x + pad + 14, y + pad + headerH, contentW, contentH),
@@ -1671,7 +1672,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonMagenta }
             };
             GUI.Label(new Rect(x + 40, headerY + 4, w - 80, 14),
-                "▸ FINAL ACCUSATION // IRREVERSIBLE", tagSt);
+                "▶ FINAL ACCUSATION // IRREVERSIBLE", tagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -1722,7 +1723,7 @@ namespace ForTheCompany.Systems
             };
             int total = s != null ? s.CollectedClues.Count : 0;
             GUI.Label(new Rect(area.x, area.y, area.width, 16),
-                $"▸ 수집 단서 // EVIDENCE ({total})", hdrSt);
+                $"▶ 수집 단서 // EVIDENCE ({total})", hdrSt);
 
             var listArea = new Rect(area.x, area.y + 22, area.width, area.height - 22);
             UITheme.DrawRect(listArea, UITheme.Bg2);
@@ -1816,7 +1817,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonMagenta }
             };
             GUI.Label(new Rect(area.x, area.y, area.width, 16),
-                "▸ 용의자 지목 // ACCUSE", hdrSt);
+                "▶ 용의자 지목 // ACCUSE", hdrSt);
 
             var roster = NPCRoster.Instance;
             int n = roster != null ? roster.npcs.Count : 0;
@@ -1928,8 +1929,8 @@ namespace ForTheCompany.Systems
                 normal = { textColor = accent }
             };
             GUI.Label(new Rect(x + 44, headerY + 4, w - 80, 16),
-                win ? "▸ MISSION SUCCESS // SUSPECT IDENTIFIED"
-                    : "▸ MISSION FAILED // INVESTIGATION COMPROMISED", tagSt);
+                win ? "▶ MISSION SUCCESS // SUSPECT IDENTIFIED"
+                    : "▶ MISSION FAILED // INVESTIGATION COMPROMISED", tagSt);
 
             // ── 메인 결과 라벨 (좀 작게) ──
             var bigSt = new GUIStyle(GUI.skin.label)
@@ -1963,17 +1964,17 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonCyan }
             };
             GUI.Label(new Rect(statsRect.x + 14, statsRect.y + 8, statsRect.width - 28, 14),
-                "▸ MISSION DEBRIEF // STATS", statTagSt);
+                "▶ MISSION DEBRIEF // STATS", statTagSt);
 
             // 통계 행들 (좌측 라벨, 우측 값)
-            DrawStatRow(statsRect, 0, "▸ 사용 시간", $"{em:D2}:{es:D2}", UITheme.NeonCyan);
-            DrawStatRow(statsRect, 1, "▸ 단서 총 수집", $"{total}개", UITheme.NeonGreen);
+            DrawStatRow(statsRect, 0, "▶ 사용 시간", $"{em:D2}:{es:D2}", UITheme.NeonCyan);
+            DrawStatRow(statsRect, 1, "▶ 단서 총 수집", $"{total}개", UITheme.NeonGreen);
             // 위 '단서 총 수집'은 보상 점수 합(상단 HUD와 동일)이고, 아래 두 줄은 수사 보드에 쌓인 카드 수
-            DrawStatRow(statsRect, 2, "▸ 수사 보드 카드 · NPC 대화", $"{npcCnt}장",
+            DrawStatRow(statsRect, 2, "▶ 수사 보드 카드 · NPC 대화", $"{npcCnt}장",
                 npcCnt > 0 ? UITheme.NeonCyan : UITheme.InkFaint);
-            DrawStatRow(statsRect, 3, "▸ 수사 보드 카드 · 보안 교육", $"{envCnt}장",
+            DrawStatRow(statsRect, 3, "▶ 수사 보드 카드 · 보안 교육", $"{envCnt}장",
                 envCnt > 0 ? UITheme.NeonYellow : UITheme.InkFaint);
-            DrawStatRow(statsRect, 4, "▸ 보안 문제 (첫 시도)",
+            DrawStatRow(statsRect, 4, "▶ 보안 문제 (첫 시도)",
                 $"{s.quizFirstTryCorrect} 맞음 · {s.quizWrongCount} 틀림",
                 s.quizWrongCount == 0 ? UITheme.NeonGreen : UITheme.NeonYellow);
 
@@ -1986,7 +1987,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = accent }
             };
             GUI.Label(new Rect(x + 30, msgY, w - 60, 22),
-                $"▸ 진짜 산업스파이: {spyName}", revealSt);
+                $"▶ 진짜 산업스파이: {spyName}", revealSt);
 
             // ── 모티브 박스 (서사적 동기) ──
             float motiveY = msgY + 28;
@@ -2009,7 +2010,7 @@ namespace ForTheCompany.Systems
                     normal = { textColor = accent }
                 };
                 GUI.Label(new Rect(motiveRect.x + 14, motiveRect.y + 6, motiveRect.width - 28, 22),
-                    "▸ MOTIVE // 유출 동기", motiveTagSt);
+                    "▶ MOTIVE // 유출 동기", motiveTagSt);
 
                 var motiveBodySt = new GUIStyle(GUI.skin.label)
                 {
@@ -2046,8 +2047,8 @@ namespace ForTheCompany.Systems
             };
             GUI.Label(new Rect(reviewRect.x + 14, reviewRect.y + 6, reviewRect.width - 28, 14),
                 s.WrongQuizzes.Count > 0
-                    ? $"▸ 오답 노트 // 틀렸던 문제 해설 ({s.WrongQuizzes.Count})"
-                    : "▸ 오답 노트 // WRONG ANSWERS", rvTagSt);
+                    ? $"▶ 오답 노트 // 틀렸던 문제 해설 ({s.WrongQuizzes.Count})"
+                    : "▶ 오답 노트 // WRONG ANSWERS", rvTagSt);
 
             if (s.WrongQuizzes.Count == 0)
             {
@@ -2108,11 +2109,11 @@ namespace ForTheCompany.Systems
             float by = y + h - 60;
 
             if (UITheme.NeonButton(new Rect(bx, by, btnW, btnH),
-                "▸ RESTART  [R]", win ? UITheme.NeonGreen : UITheme.NeonCyan))
+                "▶ RESTART  [R]", win ? UITheme.NeonGreen : UITheme.NeonCyan))
                 Restart();
 
             if (UITheme.GhostButton(new Rect(bx + btnW + gap, by, btnW, btnH),
-                "▸ MAIN MENU  [M]"))
+                "▶ MAIN MENU  [M]"))
                 ReturnToMenu();
         }
 
@@ -2243,7 +2244,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtDanger }
             };
             GUI.Label(new Rect(x + 40, headerY + 4, w - 80, 22),
-                "▸ 진행 중인 사건 // ACTIVE INCIDENT", headerTagSt);
+                "▶ 진행 중인 사건 // ACTIVE INCIDENT", headerTagSt);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -2307,7 +2308,7 @@ namespace ForTheCompany.Systems
             };
             int total = s.CollectedClues.Count;
             GUI.Label(new Rect(boardRect.x + 14, boardRect.y + 8, 300, 22),
-                $"▸ 증거 보드 // EVIDENCE BOARD · {total:D2}", labelSt);
+                $"▶ 증거 보드 // EVIDENCE BOARD · {total:D2}", labelSt);
 
             var subTag = new GUIStyle(GUI.skin.label)
             {
@@ -2509,7 +2510,7 @@ namespace ForTheCompany.Systems
             float cy = tipR.y + pad;
 
             // 태그 + 출처
-            string tagLine = $"▸ {clue.tag ?? ""}";
+            string tagLine = $"▶ {clue.tag ?? ""}";
             if (!string.IsNullOrEmpty(clue.tag)) tagLine += "  ·  ";
             tagLine += SourceLabel(clue.source);
             GUI.Label(new Rect(tipR.x + pad, cy, contentW, 14), tagLine, tagSt);
@@ -2549,7 +2550,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtMagenta }
             };
             GUI.Label(new Rect(area.x + 12, area.y + 6, area.width - 24, 22),
-                "▸ 용의자 3 // SUSPECTS — 클릭으로 단서 연결", headerSt);
+                "▶ 용의자 3 // SUSPECTS — 클릭으로 단서 연결", headerSt);
 
             // 3개 용의자 카드 가로 배치
             float cardY = area.y + 34;
@@ -2672,7 +2673,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtCyan }
             };
             GUI.Label(new Rect(area.x + 14, area.y + 8, area.width - 28, 22),
-                "▸ 용의자 파일 // SUSPECT FILE", labelSt);
+                "▶ 용의자 파일 // SUSPECT FILE", labelSt);
 
             UITheme.DrawRect(new Rect(area.x + 14, area.y + 34, area.width - 28, 1), LtLine);
 
@@ -2737,7 +2738,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtViolet }
             };
             GUI.Label(new Rect(area.x + 16, cy, area.width - 32, 20),
-                "▸ 알리바이 // ALIBI", sectionSt);
+                "▶ 알리바이 // ALIBI", sectionSt);
             cy += 24;
             var alibiSt = new GUIStyle(GUI.skin.label)
             {
@@ -2765,7 +2766,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtGreen }
             };
             GUI.Label(new Rect(area.x + 16, cy, area.width - 32, 20),
-                "▸ 수집된 단서 // EVIDENCE", linkedSt);
+                "▶ 수집된 단서 // EVIDENCE", linkedSt);
             cy += 24;
             var linkedNumSt = new GUIStyle(GUI.skin.label)
             {
@@ -2783,7 +2784,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtInkSub }
             };
             GUI.Label(new Rect(area.x + 16, cy, area.width - 32, 100),
-                "▸ 이 사람의 알리바이를 좌측 보드의 단서와 대조하세요.\n시간대가 어긋나는 ▲ 단서가 연결돼 있으면 진술이 거짓 — 그 사람이 범인입니다.",
+                "▶ 이 사람의 알리바이를 좌측 보드의 단서와 대조하세요.\n시간대가 어긋나는 ▲ 단서가 연결돼 있으면 진술이 거짓 — 그 사람이 범인입니다.",
                 infoSt);
         }
 

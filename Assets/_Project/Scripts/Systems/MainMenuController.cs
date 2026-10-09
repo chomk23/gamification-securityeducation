@@ -27,9 +27,9 @@ namespace ForTheCompany.Systems
             (
                 "SUSPECT PROFILE // 03 TARGETS",
                 "용의자 명단:\n\n" +
-                "  ▸ 연구원 — 칩 설계 핵심 멤버\n" +
-                "  ▸ 네트워크관리자 — 외부 통신 권한 보유\n" +
-                "  ▸ 시설관리자 — 출입 통제 및 카드키 관리\n\n" +
+                "  ▶ 연구원 — 칩 설계 핵심 멤버\n" +
+                "  ▶ 네트워크관리자 — 외부 통신 권한 보유\n" +
+                "  ▶ 시설관리자 — 출입 통제 및 카드키 관리\n\n" +
                 "셋 중 한 명이 진짜 산업스파이."
             ),
             (
@@ -58,6 +58,7 @@ namespace ForTheCompany.Systems
 
         private void OnGUI()
         {
+            UITheme.ApplyWebFont();
             // 풀스크린 다크 배경 + 그리드 패턴
             UITheme.DrawGridBg(new Rect(0, 0, Screen.width, Screen.height));
             UITheme.DrawScanlines(new Rect(0, 0, Screen.width, Screen.height), 0.05f);
@@ -198,7 +199,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.NeonGreen }
             };
             GUI.Label(new Rect(x + 60, cardY, w - 120, 28),
-                "▸ MISSION BRIEF // INDUSTRIAL ESPIONAGE", cardHeaderStyle);
+                "▶ MISSION BRIEF // INDUSTRIAL ESPIONAGE", cardHeaderStyle);
 
             // 카드 본문
             var cardBodyStyle = new GUIStyle(GUI.skin.label)
@@ -347,7 +348,7 @@ namespace ForTheCompany.Systems
 
             bool isLast = introIndex == introSlides.Length - 1;
             if (UITheme.NeonButton(new Rect(btnX, btnY, btnW, btnH),
-                isLast ? "▶ DEPLOY  [ENTER]" : "▸ NEXT  [ENTER]", UITheme.NeonGreen))
+                isLast ? "▶ DEPLOY  [ENTER]" : "▶ NEXT  [ENTER]", UITheme.NeonGreen))
                 NextIntro();
 
             // 하단 힌트
