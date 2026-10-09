@@ -199,32 +199,28 @@ namespace ForTheCompany.Systems
             }
         }
 
-        /// <summary>세션 완료 — 통합/모순 단서를 인벤토리에 추가 + 모달 닫기</summary>
+        /// <summary>세션 완료 — 장소 기록 + 통합 단서를 인벤토리에 추가 + 모달 닫기</summary>
         private void FinalizeSession(ClueData data)
         {
             int totalReward = data.clueReward * sessionCorrectCount;
             if (GameSession.Instance != null && sessionSuccessClues.Count > 0)
             {
-                // 이 장소의 담당 용의자(relatedRole)가 실제 스파이라면, 일반 단서 대신
-                // 알리바이를 깨는 결정적 단서를 수집한다 (보드에서 ⚠ 모순 표시).
+                // 담당 용의자가 있는 장소면 그 사람의 시각 기록을 카드 맨 위에 붙인다.
+                // 세 용의자 모두 같은 형식으로 받고 진범의 기록만 알리바이와 어긋난다 —
+                // 어느 카드가 어긋나는지는 표시하지 않는다 (판단은 플레이어 몫).
                 int spyRole = NPCRoster.Instance != null && NPCRoster.Instance.Spy != null
                     && NPCRoster.Instance.Spy.data != null
                     ? (int)NPCRoster.Instance.Spy.data.role : -1;
+                bool isSpyRoom = data.relatedRole > 0 && data.relatedRole == spyRole;
+                string record = data.relatedRole > 0 ? GameSession.GetRoomRecord(data.relatedRole, isSpyRoom) : "";
 
-                if (data.relatedRole > 0 && data.relatedRole == spyRole)
-                {
-                    GameSession.Instance.AddClue(
-                        "▲ 결정적 단서 — 알리바이 모순",
-                        GameSession.GetContradictionClue(data.relatedRole),
-                        ClueSource.Environment, data.relatedRole, "ALIBI", true);
-                }
-                else
-                {
-                    string combinedText = string.Join("\n\n", sessionSuccessClues);
-                    string clueTitle = $"[{data.roomName}] {data.objectLabel}";
-                    GameSession.Instance.AddClue(clueTitle, combinedText,
-                        ClueSource.Environment, data.relatedRole, data.tag);
-                }
+                string combinedText = string.Join("\n\n", sessionSuccessClues);
+                if (!string.IsNullOrEmpty(record))
+                    combinedText = record + "\n\n" + combinedText;
+                string clueTitle = $"[{data.roomName}] {data.objectLabel}";
+                GameSession.Instance.AddClue(clueTitle, combinedText,
+                    ClueSource.Environment, data.relatedRole, data.tag,
+                    contradictsAlibi: isSpyRoom, alibiEvidence: !string.IsNullOrEmpty(record));
             }
             LastResultText = $"✓ 보안 교육 완료! {sessionCorrectCount}/{SessionTotal} 정답\n+{totalReward} 단서 획득";
             LastResultTime = Time.time; // 완료 토스트 타이머
@@ -278,7 +274,7 @@ namespace ForTheCompany.Systems
                         "다른 직원에게 준다"
                     },
                     correctIndex = 1,
-                    successClue = "USB에 새벽 2시 연구실 서버 백업 데이터가 들어있다. 누군가 빼돌리려 했다.",
+                    successClue = "USB 안에 연구실 서버 백업 파일 일부가 들어 있다. 누가 언제 복사했는지는 기록과 대조해야 한다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -324,7 +320,7 @@ namespace ForTheCompany.Systems
                         "동료에게 알리고 퇴근"
                     },
                     correctIndex = 1,
-                    successClue = "어제 23:47, 미식별 외부 IP로 1.2GB 전송. 발신 단말은 사내 네트워크 단말.",
+                    successClue = "사내망에서 외부 IP로 나간 대용량 전송 흔적이 있다. 발신 단말은 아직 특정되지 않았다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -393,7 +389,7 @@ namespace ForTheCompany.Systems
                         "친구에게 빌려준 것이라 추측"
                     },
                     correctIndex = 1,
-                    successClue = "복제 카드키가 새벽 1~3시 보안 구역 출입에 사용됐다.",
+                    successClue = "퇴직·전보자 카드 일부가 아직 활성 상태였다. 권한 말소 지연 정황.",
                     clueReward = 2
                 }
             };

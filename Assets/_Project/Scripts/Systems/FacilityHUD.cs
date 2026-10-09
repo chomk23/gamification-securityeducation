@@ -1711,7 +1711,7 @@ namespace ForTheCompany.Systems
         }
 
         /// <summary>지목 모달 좌측 — 수집 단서 전체를 스크롤 없이 표시 (3열 동적 높이, 텍스트 잘림 없음).
-        /// 알리바이 모순 단서는 빨강 강조.</summary>
+        /// 장소 기록 카드(세 용의자 모두)는 같은 보라 '알리바이 대조' 표시 — 어느 것이 모순인지는 드러내지 않는다.</summary>
         private void DrawAccusationClueList(Rect area)
         {
             var s = GameSession.Instance;
@@ -1767,8 +1767,8 @@ namespace ForTheCompany.Systems
             for (int i = 0; i < total; i++)
             {
                 var clue = s.CollectedClues[i];
-                bool broken = clue.contradictsAlibi;
-                Color accent = broken ? UITheme.Danger : GetSourceColor(clue.source);
+                bool evidence = clue.alibiEvidence;
+                Color accent = evidence ? UITheme.NeonViolet : GetSourceColor(clue.source);
 
                 float titleH = titleSt.CalcHeight(new GUIContent(clue.title), textW);
                 float bodyH = bodySt.CalcHeight(new GUIContent(clue.text), textW);
@@ -1786,10 +1786,10 @@ namespace ForTheCompany.Systems
 
                 UITheme.DrawRect(cardR, UITheme.Bg3);
                 UITheme.DrawRect(new Rect(cardR.x, cardR.y, 3f, cardR.height), accent);
-                if (broken) UITheme.DrawBorder(cardR, UITheme.Danger, 1f);
+                if (evidence) UITheme.DrawBorder(cardR, UITheme.NeonViolet, 1f);
 
                 // 태그/출처 라벨
-                string tagText = broken ? "▲ ALIBI 모순"
+                string tagText = evidence ? "▲ 알리바이 대조"
                     : (string.IsNullOrEmpty(clue.tag) ? SourceLabel(clue.source) : clue.tag);
                 var tagChipSt = new GUIStyle(GUI.skin.label)
                 {
@@ -2130,7 +2130,7 @@ namespace ForTheCompany.Systems
                 case 2: return
                     "암호화폐 투자 손실로 빚이 눈덩이처럼 불어났다.\n" +
                     "다크웹의 누군가가 기업 보안 데이터에 거액을 제시했고,\n" +
-                    "관리자 권한을 가진 그는 새벽 시간 외부 IP로 자료를 흘려보냈다.";
+                    "관리자 권한을 가진 그는 퇴근한 척한 뒤 밤늦게 외부 IP로 자료를 흘려보냈다.";
                 case 3: return
                     "어머니의 긴급 수술비가 필요했지만 회사 대출은 거절됐다.\n" +
                     "외부 침입자는 단 한 번 — 카드키 사본과 30분간의 CCTV 정전을 요구했다.\n" +
@@ -2388,8 +2388,8 @@ namespace ForTheCompany.Systems
                 var cardR = new Rect(cx, cy, cardW, cardH);
 
                 var clue = s.CollectedClues[i];
-                // 알리바이를 깨는 결정적 단서는 빨강 강조 (흰 배경용 진한 색)
-                Color accent = clue.contradictsAlibi ? LtDanger : GetSourceColorLight(clue.source);
+                // 장소 기록 카드(세 용의자 모두)는 보라 강조 — 모순 여부는 표시하지 않는다
+                Color accent = clue.alibiEvidence ? LtViolet : GetSourceColorLight(clue.source);
                 bool isLinkedToSelected = selectedSuspectRole >= 0
                     && clue.relatedRole == selectedSuspectRole;
                 bool dim = selectedSuspectRole >= 0 && !isLinkedToSelected;
@@ -2418,9 +2418,10 @@ namespace ForTheCompany.Systems
                 {
                     var tagMeasure = new GUIStyle(GUI.skin.label)
                         { fontSize = 10, fontStyle = FontStyle.Bold };
-                    float tagW = tagMeasure.CalcSize(new GUIContent(clue.tag.ToUpper())).x + 16f;
+                    string tagShown = clue.alibiEvidence ? "▲ " + clue.tag : clue.tag;
+                    float tagW = tagMeasure.CalcSize(new GUIContent(tagShown.ToUpper())).x + 16f;
                     tagW = Mathf.Clamp(tagW, 44f, cardR.width - 48f); // 우측 #번호 공간 확보
-                    DrawTagLight(new Rect(cardR.x + 8, cardR.y + 6, tagW, 15), clue.tag, accent);
+                    DrawTagLight(new Rect(cardR.x + 8, cardR.y + 6, tagW, 15), tagShown, accent);
                 }
                 var numSt = new GUIStyle(GUI.skin.label)
                 {
@@ -2464,8 +2465,8 @@ namespace ForTheCompany.Systems
             float tipW = 380f;
             float pad = 14f;
 
-            // 모순 단서는 빨강, 아니면 출처색 (흰 배경용 진한 버전)
-            Color tipAccent = clue.contradictsAlibi ? LtDanger : GetSourceColorLight(clue.source);
+            // 장소 기록 카드는 보라, 아니면 출처색 (흰 배경용 진한 버전)
+            Color tipAccent = clue.alibiEvidence ? LtViolet : GetSourceColorLight(clue.source);
 
             var titleSt = new GUIStyle(GUI.skin.label)
             {
@@ -2727,7 +2728,7 @@ namespace ForTheCompany.Systems
                 GetRoleSubtitle(selectedSuspectRole), subSt);
             cy += 28;
 
-            // 알리바이 — 추리 기준 (수집한 결정적 단서와 시간대를 대조해 거짓을 찾는다)
+            // 알리바이 — 추리 기준 (▲ 장소 기록 카드의 시각과 대조해 거짓을 찾는다)
             UITheme.DrawRect(new Rect(area.x + 16, cy, area.width - 32, 1), LtLine);
             cy += 10;
 
@@ -2784,7 +2785,7 @@ namespace ForTheCompany.Systems
                 normal = { textColor = LtInkSub }
             };
             GUI.Label(new Rect(area.x + 16, cy, area.width - 32, 100),
-                "▶ 이 사람의 알리바이를 좌측 보드의 단서와 대조하세요.\n시간대가 어긋나는 ▲ 단서가 연결돼 있으면 진술이 거짓 — 그 사람이 범인입니다.",
+                "▶ 이 사람의 알리바이를 좌측 보드의 ▲ 기록 카드 시각과 대조하세요.\n진술과 시간대가 어긋나는 사람이 범인입니다.",
                 infoSt);
         }
 

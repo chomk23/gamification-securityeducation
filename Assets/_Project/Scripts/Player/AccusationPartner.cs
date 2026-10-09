@@ -182,15 +182,12 @@ namespace ForTheCompany.Player
 
             var s = GameSession.Instance;
             int c = s != null ? s.totalClues : 0;
-            string spyName = NPCRoster.Instance != null && NPCRoster.Instance.Spy != null
-                ? NPCRoster.Instance.Spy.DisplayName
-                : "?";
 
             var lines = new[]
             {
                 $"조사관님, 돌아오셨군요. 단서를 {c}건이나 모으셨네요.",
                 "제가 수집된 정보를 다시 분석해봤습니다. 패턴이 명확해지고 있어요.",
-                "수사 보드(I 키)를 열어 세 용의자의 알리바이를 수집한 증거와 대조해 보세요.",
+                "수사 보드(I 키)를 열어 세 용의자의 알리바이를 ▲ 표시된 장소 기록의 시각과 대조해 보세요.",
                 "딱 한 명의 알리바이만 증거와 시간대가 어긋납니다. 그 사람이 범인이에요.",
                 "...하지만 마지막 판단은 인간 조사관이 직접 내려야 한다는 게 회사 규정이에요.",
                 "잘못된 지목은 되돌릴 수 없습니다. 한 번에 끝내야 합니다.",

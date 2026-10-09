@@ -52,6 +52,12 @@ namespace ForTheCompany.Managers
             Spy = npcs[idx];
             Spy.isSpy = true;
 
+            // 시간 초과 메시지가 쓰는 GameSession.spyRoleIndex를 실제 스파이와 맞춘다
+            // (따로 뽑으면 결과창에 서로 다른 스파이 이름 두 개가 뜬다)
+            var session = ForTheCompany.Core.GameSession.Instance;
+            if (session != null && Spy.data != null)
+                session.spyRoleIndex = (int)Spy.data.role - 1;
+
 #if UNITY_EDITOR
             if (revealSpyInLog)
                 Debug.Log($"[Spy Assigned] {Spy.DisplayName} 가 스파이입니다 (Editor 전용 디버그).");

@@ -95,7 +95,7 @@ namespace ForTheCompany.Systems
                     s.AddClue(
                         "보안 카드키 획득",
                         "네트워크관리자에게 받은 전력실 출입 카드키. 시설관리자 만나러 가는 길이 열림.",
-                        ClueSource.NPC, 2, "BADGE");
+                        ClueSource.NPC, -1, "BADGE"); // 용의자 연결 안 함 — 한 사람만 연결 단서가 많아 보이는 편향 방지
                     Debug.Log("[Quest] 보안 카드키 발급 — 전력실 잠금 해제");
                 }
             }

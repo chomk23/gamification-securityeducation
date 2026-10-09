@@ -63,23 +63,19 @@ namespace ForTheCompany.Player
         {
             HasBeenTalkedTo = true;
             int my = Actor != null && Actor.data != null ? (int)Actor.data.role : -1;
-            int spy = ResolveSpyRole();
-            bool selfIsSpy = Actor != null && Actor.isSpy;
 
-            string[] lines = BuildFirstTalkLines(my, spy, selfIsSpy);
+            string[] lines = BuildFirstTalkLines(my);
             // 알리바이 진술 한 줄 추가 — 인벤토리 보드 추리의 기준이 된다.
-            // 무고한 NPC는 진실, 스파이는 거짓(결정적 단서와 시간대가 어긋남).
+            // 무고한 NPC는 진실, 스파이는 거짓(장소 기록과 시간대가 어긋남). 말투는 같게 — 말투로 범인이 드러나지 않게.
             string alibi = GameSession.GetAlibi(my);
             if (!string.IsNullOrEmpty(alibi))
             {
                 var withAlibi = new string[lines.Length + 1];
                 System.Array.Copy(lines, withAlibi, lines.Length);
-                withAlibi[lines.Length] = selfIsSpy
-                    ? $"...어제 제 행적이요? {alibi}"
-                    : $"아, 어제 제 행적은 — {alibi}";
+                withAlibi[lines.Length] = $"아, 어제 제 행적은요 — {alibi}";
                 lines = withAlibi;
             }
-            DialogueChoice[] choices = BuildFirstTalkChoices(my, spy, selfIsSpy);
+            DialogueChoice[] choices = BuildFirstTalkChoices(my);
             // 트랜지션 라인은 선택지 응답 이후에 별도 짧은 대화로 띄움
             // (StartTransitionAndOpenQuiz 코루틴 처리)
             string inventoryText = string.Join("\n", lines);
@@ -104,8 +100,7 @@ namespace ForTheCompany.Player
         private string StartRepeatTalk(int reward)
         {
             int my = Actor != null && Actor.data != null ? (int)Actor.data.role : -1;
-            int spy = ResolveSpyRole();
-            string msg = BuildRepeatLine(my, spy);
+            string msg = BuildRepeatLine(my);
 
             var ds = DialogueSystem.Instance;
             if (ds != null)
@@ -161,11 +156,11 @@ namespace ForTheCompany.Player
             // 첫 대화창 완전히 닫힘 대기
             yield return new WaitForSeconds(0.4f);
 
-            // 다른 창이 떠 있으면 닫힐 때까지 대기 — 여기서 중단하면 이 방의 보안교육(결정적 단서 포함)을 다시 열 방법이 없다
+            // 다른 창이 떠 있으면 닫힐 때까지 대기 — 여기서 중단하면 이 방의 보안교육(장소 기록 포함)을 다시 열 방법이 없다
             yield return WaitUntilNoBlockingModal();
             if (IsRunOver()) { quizFlowPending = false; yield break; }
 
-            string[] transitionLines = GetTransitionLines(Actor != null && Actor.isSpy);
+            string[] transitionLines = GetTransitionLines();
             var ds = DialogueSystem.Instance;
 
             if (ds != null)
@@ -234,8 +229,8 @@ namespace ForTheCompany.Player
         }
 
         /// <summary>NPC 직업별 트랜지션 안내 멘트 (2줄: 보안교육 + 다음 행동 안내) — 대화 → 퀴즈 → 다음 단계 흐름을 자연스럽게.
-        /// 스파이는 회피적 톤, 무고한 NPC는 협조적 톤.</summary>
-        private string[] GetTransitionLines(bool selfIsSpy)
+        /// 스파이 여부와 무관하게 같은 말투 (말투로 범인이 드러나지 않게).</summary>
+        private string[] GetTransitionLines()
         {
             if (Actor == null || Actor.data == null)
                 return new[] { "잠시만요, 같이 봐주실 게 있어요." };
@@ -243,30 +238,6 @@ namespace ForTheCompany.Player
             int role = (int)Actor.data.role;
             string transition, nextHint;
 
-            if (selfIsSpy)
-            {
-                // 스파이 — 회피·모호한 톤
-                switch (role)
-                {
-                    case 1: // 연구원 스파이
-                        transition = "보안 교육 자료에도 비슷한 케이스 있긴 한데... 굳이 보시려면 띄워드릴게요.";
-                        nextHint = "끝나시면 중앙복도의 경비원에게 가셔서 다음 안내 받으시면 될 겁니다.";
-                        break;
-                    case 2: // 네트워크관리자 스파이
-                        transition = "음... 보안 교육 모듈에도 있긴 합니다. 형식적인 거지만 보시려면...";
-                        nextHint = "그 다음엔 전력실의 시설관리자에게 가시면 됩니다. 카드키 발급 권한이 거기 있으니까요.";
-                        break;
-                    case 3: // 시설관리자 스파이
-                        transition = "보안 교육 자료요? 굳이 안 보셔도 되는데... 그래도 띄워는 드릴게요.";
-                        nextHint = "끝나시면 보안통제실의 동료 수사관에게 가시면 됩니다. 거기서 지목 절차 진행해주실 거예요.";
-                        break;
-                    default:
-                        return new[] { "잠시만요... 자료 띄워드릴게요." };
-                }
-                return new[] { transition, nextHint };
-            }
-
-            // 무고한 NPC — 협조적, 적극적
             switch (role)
             {
                 case 1: // 연구원
@@ -316,13 +287,6 @@ namespace ForTheCompany.Player
                 LastResult = $"{DisplayName}: {msg}";
         }
 
-        private int ResolveSpyRole()
-        {
-            var spy = NPCRoster.Instance != null ? NPCRoster.Instance.Spy : null;
-            if (spy == null || spy.data == null) return -1;
-            return (int)spy.data.role;
-        }
-
         private void FacePlayer()
         {
             var p = PlayerInteractor.Instance;
@@ -338,216 +302,72 @@ namespace ForTheCompany.Player
         // ═══════════════════ 대화 콘텐츠 ═══════════════════
         // RoleType: Security=0, Researcher=1, NetworkAdmin=2, FacilityManager=3
         // 캐릭터 톤: 연구원=학자, 네트워크관리자=기술자, 시설관리자=현장
+        //
+        // 진술은 누가 스파이든 똑같다 — 대화로 범인이 드러나지 않게 하고(학습자가 직접 판단),
+        // 판단은 알리바이와 장소 기록(GameSession.GetRoomRecord)의 시각을 대조해서 내리게 한다.
+        // 모든 진술은 세 사람의 알리바이·기록 어느 것과도 모순되지 않아야 한다 (누구든 무고할 수 있으므로).
+        // 세 사람이 서로를 한 번씩 가볍게 의심한다: 연구원→시설관리자, 네트워크관리자→연구원, 시설관리자→네트워크관리자.
 
-        private string[] BuildFirstTalkLines(int my, int spy, bool selfIsSpy)
+        private static string[] BuildFirstTalkLines(int my)
         {
-            // 자기가 스파이인 경우 — 회피, 모호, 변명
-            if (selfIsSpy)
-            {
-                switch (my)
-                {
-                    case 1: // 연구원 자기 스파이
-                        return new[] {
-                            "보안조사관님이시군요. 연구실은... 평소대로입니다.",
-                            "USB? 외부 공동연구 자료 받느라 종종 쓰긴 합니다. 다 정식 절차예요.",
-                            "어제 새벽요? 마감 직전이라 늦게까지 있었지만, 평범한 야근이었어요.",
-                            "제 책상 위 USB 보시려고요? 특별한 거 없을 거예요. 보통 자료뿐이라..."
-                        };
-                    case 2: // 네트워크관리자 자기 스파이
-                        return new[] {
-                            "로그요? 다 깨끗합니다. 평소와 다를 게 없어요.",
-                            "외부 트래픽도 정상 범위 안이에요. 모니터링 자료 보여드릴 수 있습니다.",
-                            "굳이 의심받을 만한 일이 없는데... 왜 저한테 물어보시는 거죠?",
-                            "서버실 모니터 보러 가시려고요? 다 정상 로그일 거예요. 굳이 안 보셔도..."
-                        };
-                    case 3: // 시설관리자 자기 스파이
-                        return new[] {
-                            "어... 저요? 시설은 평소대로 운영 중입니다. 별 이상 없어요.",
-                            "CCTV 점검은 정기적으로 하는 거예요. 시간 좀 걸렸을 수 있지만 정상 업무입니다.",
-                            "카드키 발급도 절차대로 처리했어요. 의심받을 만한 일이 뭐가 있는지...",
-                            "카드키 발급 단말 보시려고요? 다 정상 절차예요. 따로 보실 필요 없으실 텐데..."
-                        };
-                }
-            }
-
-            // 무고한 NPC — 진짜 스파이를 다양한 방식으로 지목
             switch (my)
             {
-                case 1: // 연구원이 말함
-                    switch (spy)
-                    {
-                        case 2: // 스파이=네트워크관리자
-                            return new[] {
-                                "네... 보안 사건 얘기는 들었어요. 충격이죠.",
-                                "어제 네트워크관리자분이 USB 슬롯 점검한다며 오래 머무셨어요. 평소엔 빨리 끝내시는데.",
-                                "그리고 새벽에 외부로 큰 데이터 전송이 있었다는 얘기도 있어요. 누군가 의도적으로...",
-                                "아! 그리고 제 책상 위 USB도 확인해보세요. 거기 백업 기록 남아있어요."
-                            };
-                        case 3: // 스파이=시설관리자
-                            return new[] {
-                                "어제 좀 이상한 일이 있었어요. CCTV가 점검한다고 잠시 꺼졌는데...",
-                                "시설관리자분이 직접 점검한다고 했는데, 그 시간이 평소보다 너무 길었어요. 30분 이상.",
-                                "보통 5분이면 끝나는 작업이거든요. 그 사이에 누가 뭘 했을지...",
-                                "그리고 제 책상 위 USB도 살펴봐 주세요. 새벽 작업 흔적이 거기 있을지도..."
-                            };
-                    }
-                    break;
-
-                case 2: // 네트워크관리자가 말함
-                    switch (spy)
-                    {
-                        case 1: // 스파이=연구원
-                            return new[] {
-                                "트래픽 로그 보러 오셨죠? 어제 새벽 2시쯤 이상한 거 잡혔어요.",
-                                "연구실 서버에서 관리자 권한으로 비정상 접근이 있었거든요. 평소 안 쓰는 권한이에요.",
-                                "접근 흔적이 연구원 단말이랑 매칭돼요. 본인이 아니라면 누가 했을지 모르겠네요.",
-                                "서버실 모니터에 어제 로그 띄워뒀어요. 직접 보시는 게 빠를 거예요."
-                            };
-                        case 3: // 스파이=시설관리자
-                            return new[] {
-                                "이상한 거 하나 잡혔어요. 시설관리자 단말에서 외부 서버 IP로 트래픽이 나갔어요.",
-                                "권한상 그분은 외부 통신 안 되는데, 우회한 흔적이 있어요. CCTV 점검 시간이랑 정확히 겹쳐요.",
-                                "보안 카드키 발급 권한 가진 분이라 시스템 접근도 쉬웠을 거예요.",
-                                "서버실 모니터 로그도 한번 살펴봐 주세요. 외부 IP 흔적이 거기 잡혀요."
-                            };
-                    }
-                    break;
-
-                case 3: // 시설관리자가 말함
-                    switch (spy)
-                    {
-                        case 1: // 스파이=연구원
-                            return new[] {
-                                "카드키 출입 기록이요? 어제 좀 이상한 패턴이 있긴 했어요.",
-                                "연구원분이 새벽 2시쯤 카드키로 연구실 들어가셨는데, 새벽 3시까지 안 나오셨어요.",
-                                "보통 야근해도 그 시간엔 다 나가시는데, 그날만 유독... 한 번 더 봐주세요.",
-                                "전력실 옆 카드키 발급 단말 확인해보세요. 새벽 발급 이력이 다 남아있어요."
-                            };
-                        case 2: // 스파이=네트워크관리자
-                            return new[] {
-                                "네트워크관리자분 출입 기록을 봤는데 좀 특이해요.",
-                                "서버실에 평소엔 점검 일정에만 들어가시는데, 최근 며칠은 매일 새벽에 들어가셨어요.",
-                                "그것도 짧게 5분이 아니라 30분 이상씩. 안에서 뭘 하셨는지는 CCTV로도 안 잡혔어요.",
-                                "카드키 발급 단말도 한번 봐주세요. 누가 자주 출입했는지 다 기록돼요."
-                            };
-                    }
-                    break;
+                case 1: // 연구원
+                    return new[] {
+                        "네... 보안 사건 얘기는 들었어요. 설계도가 밖으로 나갔다니 아직도 믿기지 않네요.",
+                        "어제 저녁엔 다들 평소처럼 일했어요. 밤 9시쯤 네트워크관리자분이 서버 점검한다며 복도를 지나가셨고요.",
+                        "그러고 보니 시설관리자분이 저녁에 CCTV 점검을 꽤 오래 하시던 게 좀 기억에 남네요.",
+                        "참, 연구실에서 주인 모를 USB가 하나 발견됐어요. 확인해 보시면 조사에 도움이 될 거예요."
+                    };
+                case 2: // 네트워크관리자
+                    return new[] {
+                        "트래픽 로그 보러 오셨죠? 어젯밤 외부로 나간 데이터 흔적이 있긴 해요.",
+                        "다만 어느 단말에서 나갔는지는 아직 특정이 안 됐어요. 접속 기록을 더 맞춰 봐야 해요.",
+                        "연구원분은 요즘 마감 때문에 늦게까지 남아 계셨다고 들었어요. 야근이 잦으시더라고요.",
+                        "서버실 모니터에 어제 접속 로그를 띄워 뒀어요. 직접 보시는 게 빠를 거예요."
+                    };
+                case 3: // 시설관리자
+                    return new[] {
+                        "카드키 출입 기록이요? 어제 밤에도 보안 구역 출입이 몇 건 있긴 했어요.",
+                        "카드마다 주인이 등록돼 있어서, 누가 언제 드나들었는지는 발급 단말에 그대로 찍혀요.",
+                        "네트워크관리자분은 요즘 서버실에 자주 드나드시더라고요. 업무상 그럴 수 있긴 하지만요.",
+                        "전력실 옆 카드키 발급 단말을 확인해 보세요. 출입 이력이 다 남아 있어요."
+                    };
             }
-
             return new[] { "별다른 단서는 없습니다." };
         }
 
-        private DialogueChoice[] BuildFirstTalkChoices(int my, int spy, bool selfIsSpy)
+        private static DialogueChoice[] BuildFirstTalkChoices(int my)
         {
-            // 자기가 스파이일 때 — 회피 응답으로 변경
-            if (selfIsSpy)
-            {
-                switch (my)
-                {
-                    case 1:
-                        return new[] {
-                            new DialogueChoice("어제 정확히 몇 시까지 계셨나요?",
-                                "음... 2시 반? 3시? 정확히는 기억이 안 나네요."),
-                            new DialogueChoice("외부 USB로 받은 자료가 뭐였나요?",
-                                "기밀이라 자세히는 말씀드리기 어렵네요. 일반 학술자료요."),
-                            new DialogueChoice("협조 감사합니다.",
-                                "별 도움 못 드려 죄송하네요.")
-                        };
-                    case 2:
-                        return new[] {
-                            new DialogueChoice("어제 서버실에 평소보다 오래 계셨다던데?",
-                                "정기 점검이었습니다. 일정 잡혀있던 거예요."),
-                            new DialogueChoice("사용하시는 USB 종류가 뭐예요?",
-                                "회사 표준 USB만 씁니다. 다른 건 안 가져옵니다."),
-                            new DialogueChoice("협조 감사합니다.",
-                                "네... 잘 마무리되길 바랍니다.")
-                        };
-                    case 3:
-                        return new[] {
-                            new DialogueChoice("어제 CCTV 정확히 몇 분 끄셨어요?",
-                                "정확히는 기억이 안 나네요. 일 처리하느라 바빠서요."),
-                            new DialogueChoice("발급한 카드키 목록 보여주실 수 있나요?",
-                                "공식 요청 거치면 가능합니다. 지금 당장은 어렵네요."),
-                            new DialogueChoice("협조해주셔서 감사합니다.",
-                                "별 도움 못 드려 죄송하네요.")
-                        };
-                }
-            }
-
-            // 무고한 NPC — 캐릭터별 + 스파이별 구체적 선택지
             switch (my)
             {
                 case 1: // 연구원 (학자 톤)
-                    switch (spy)
-                    {
-                        case 2:
-                            return new[] {
-                                new DialogueChoice("그분이 평소와 달랐던 점이 더 있었나요?",
-                                    "최근에 자꾸 야근하시더라고요. 전엔 칼퇴하셨는데."),
-                                new DialogueChoice("USB 슬롯에 뭔가 꽂혀있던 거 보셨어요?",
-                                    "네, 검은색 작은 USB였어요. 회사 USB는 파란색인데요."),
-                                new DialogueChoice("감사합니다, 더 조사해보겠습니다.",
-                                    "조심하세요. 디지털 흔적이 잘 안 남는 분이라...")
-                            };
-                        case 3:
-                            return new[] {
-                                new DialogueChoice("정확한 시간 기억나세요?",
-                                    "새벽 2시 15분부터 47분까지. 단말기 시계로 확인했어요."),
-                                new DialogueChoice("시설관리자분이 평소와 다르셨나요?",
-                                    "최근 예민해 보이셨어요. 카드키 발급도 막 처리하셨고요."),
-                                new DialogueChoice("좋은 정보 감사합니다.",
-                                    "꼭 잡으셨으면 합니다.")
-                            };
-                    }
-                    break;
-
+                    return new[] {
+                        new DialogueChoice("어제 몇 시쯤 퇴근하셨어요?",
+                            "자정 조금 전에 나왔어요. 마감 자료 정리하느라 늦었죠."),
+                        new DialogueChoice("발견된 USB가 누구 건지 아세요?",
+                            "아뇨, 처음 보는 거예요. 연구실 공용 USB는 전부 파란색이거든요."),
+                        new DialogueChoice("시설관리자분 점검이 평소보다 길었나요?",
+                            "길어 보이긴 했는데... 저도 지나가다 본 거라 정확하진 않아요.")
+                    };
                 case 2: // 네트워크관리자 (기술자 톤)
-                    switch (spy)
-                    {
-                        case 1:
-                            return new[] {
-                                new DialogueChoice("비밀번호가 평문으로 남았나요?",
-                                    "네, 그게 더 문제예요. 누군가 빠르게 일을 처리한 흔적이죠."),
-                                new DialogueChoice("다른 시간대에도 비슷한 접근이 있었어요?",
-                                    "지난주에도 한 번 있었어요. 점점 대담해지는 패턴이에요."),
-                                new DialogueChoice("분석 결과 정리해 주세요.",
-                                    "보고서 작성해서 보안팀에 올리겠습니다.")
-                            };
-                        case 3:
-                            return new[] {
-                                new DialogueChoice("외부 IP가 어디였나요?",
-                                    "추적했더니 해외 프록시 거쳐서 들어왔어요. 일반 사용자는 못 만지는 루트예요."),
-                                new DialogueChoice("그분이 평소 그런 기술 다루시던가요?",
-                                    "원래 안 다루시는데, 최근 IT 매뉴얼 자주 보시는 거 봤어요."),
-                                new DialogueChoice("조사 잘 부탁드립니다.",
-                                    "다음에 또 잡히면 바로 알려드릴게요.")
-                            };
-                    }
-                    break;
-
+                    return new[] {
+                        new DialogueChoice("외부로 나간 데이터 양은 어느 정도였나요?",
+                            "꽤 컸어요. 그 시간에 누가 접속해 있었는지는 접속 기록으로 보시는 게 정확해요."),
+                        new DialogueChoice("접속 기록은 조작될 수 있나요?",
+                            "기록은 별도 서버에 이중으로 남아서, 지우거나 고치기는 어려워요."),
+                        new DialogueChoice("연구원분 야근은 언제부터 늘었나요?",
+                            "제가 직접 본 건 아니고, 출입 기록에서 늦은 퇴실이 몇 번 보였어요.")
+                    };
                 case 3: // 시설관리자 (현장 톤)
-                    switch (spy)
-                    {
-                        case 1:
-                            return new[] {
-                                new DialogueChoice("정확한 시간 다시 알려주세요.",
-                                    "01시 58분 입장, 03시 14분 퇴장. 1시간 16분이에요."),
-                                new DialogueChoice("그분이 자주 야근하시나요?",
-                                    "전엔 거의 안 하셨어요. 최근 한 달 사이에 늘었어요."),
-                                new DialogueChoice("감사합니다.",
-                                    "도움 됐으면 합니다.")
-                            };
-                        case 2:
-                            return new[] {
-                                new DialogueChoice("안에서 뭐 하셨는지 추측되시나요?",
-                                    "USB 슬롯에 뭔가 꽂거나, 데이터 옮기거나... 추측일 뿐이지만요."),
-                                new DialogueChoice("다른 직원들도 그분 의심하나요?",
-                                    "직접 말은 안 하시지만, 다들 좀 거리 두시는 분위기예요."),
-                                new DialogueChoice("더 봐주세요.",
-                                    "추가로 뭐 발견하면 바로 알려드릴게요.")
-                            };
-                    }
-                    break;
+                    return new[] {
+                        new DialogueChoice("보안 구역 출입은 몇 시쯤이었나요?",
+                            "밤늦은 시간대였어요. 누가 언제 나갔는지는 발급 단말 기록에 남아 있어요."),
+                        new DialogueChoice("카드키 기록은 믿을 만한가요?",
+                            "네, 출입할 때마다 카드 주인과 시각이 찍혀요. 다른 사람 카드로는 문이 안 열리고요."),
+                        new DialogueChoice("네트워크관리자분 서버실 출입은 정상인가요?",
+                            "출입 권한은 있어요. 다만 횟수가 평소보다 많긴 했어요.")
+                    };
             }
 
             // 폴백 — 일반 선택지
@@ -557,33 +377,14 @@ namespace ForTheCompany.Player
             };
         }
 
-        // 반복 대화는 짧고 단순
-        private string BuildRepeatLine(int my, int spy)
+        // 반복 대화는 짧고 단순 (이 역시 스파이 여부와 무관)
+        private static string BuildRepeatLine(int my)
         {
-            // 기존 ResolveLine repeat 케이스 유지 (간략화)
-            if (Actor != null && Actor.isSpy)
+            switch (my)
             {
-                switch (my)
-                {
-                    case 1: return "정말 별 일 없어요. 평소처럼 일하고 있을 뿐이에요.";
-                    case 2: return "이미 다 말씀드렸어요. 더 드릴 정보가 없습니다.";
-                    case 3: return "이미 다 말씀드린 것 같은데요. 정말 별 일 없습니다.";
-                }
-            }
-            switch (spy)
-            {
-                case 1: switch (my) {
-                        case 2: return "접근 로그를 다시 봤더니 평문 비밀번호까지 남아있더라구요. 위험합니다.";
-                        case 3: return "연구원이 새벽 3시까지 연구실에서 안 나왔어요. 야근치고는 너무 길죠.";
-                    } break;
-                case 2: switch (my) {
-                        case 1: return "사실 어제밤 제 USB 슬롯에 뭔가 꽂혀있던 것 같아요.";
-                        case 3: return "네트워크관리자 단말에서 외부 서버 IP로 트래픽이 나간 흔적을 봤어요.";
-                    } break;
-                case 3: switch (my) {
-                        case 1: return "카메라 끄는 동안 시설관리자가 어디 있었는지 아무도 못 봤어요.";
-                        case 2: return "시설관리자 카드키로 새벽에 서버실 출입한 로그가 있어요. 권한 밖인데도요.";
-                    } break;
+                case 1: return "더 기억나는 게 있으면 말씀드릴게요. 수사 보드에 모인 기록부터 확인해 보세요.";
+                case 2: return "로그는 이미 다 넘겨드렸어요. 시각을 하나씩 맞춰 보시면 보일 거예요.";
+                case 3: return "출입 기록은 발급 단말에 다 남아 있어요. 알리바이랑 시간을 맞춰 보세요.";
             }
             return "더 이상 드릴 정보는 없습니다.";
         }

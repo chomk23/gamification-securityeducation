@@ -211,32 +211,13 @@ namespace ForTheCompany.Player
             }
         }
 
-        /// <summary>연구원 대화·보안 미션 후 경비원 중간 브리핑 — 진짜 스파이를 향한 약한 힌트 + 레이싱 안내</summary>
+        /// <summary>연구원 대화·보안 미션 후 경비원 중간 브리핑 — 추리 방법 안내 + 레이싱 안내.
+        /// 누가 스파이인지는 암시하지 않는다 (판단은 플레이어가 알리바이와 기록을 대조해서).</summary>
         private void StartGuardCheckInDialogue(DialogueSystem ds, QuestManager quest)
         {
-            // 연구원이 누구를 의심하라고 했는지에 따라 힌트 분기
-            var spy = NPCRoster.Instance != null ? NPCRoster.Instance.Spy : null;
-            int spyRole = spy != null && spy.data != null ? (int)spy.data.role : -1;
-
-            string hintLine;
-            switch (spyRole)
-            {
-                case 2: // 스파이=네트워크관리자
-                    hintLine = "음... 네트워크관리자 쪽 정황이 좀 걸리시는군요. " +
-                               "어제 서버실 출입 기록도 평소와 다르긴 했습니다. 더 파보시는 게 좋겠습니다.";
-                    break;
-                case 3: // 스파이=시설관리자
-                    hintLine = "시설관리자의 CCTV 점검 시간이 길었다는 건 저도 들었습니다. " +
-                               "그 부분은 카드키 발급 권한과도 연관이 있어서 신중히 보셔야 합니다.";
-                    break;
-                case 1: // 스파이=연구원 자신 (연구원이 회피로 답한 경우)
-                    hintLine = "연구원이 평소답지 않게 회피적이었다는 거군요. " +
-                               "본인이 의심을 받지 않으려 일부러 모호하게 답한 걸 수도 있습니다. 더 파보시죠.";
-                    break;
-                default:
-                    hintLine = "연구원의 증언, 잘 메모해두셨군요. 단서 하나하나가 다 의미가 있습니다.";
-                    break;
-            }
+            string hintLine =
+                "용의자들은 저마다 어젯밤 행적을 말할 겁니다. 서로를 의심하는 말도 나오겠지만, 증언만으론 판단하기 어렵습니다. " +
+                "각자의 알리바이를 수사 보드에 모아 두고, 장소마다 남은 기록의 시각과 하나씩 맞춰 보세요.";
 
             var lines = new[]
             {
