@@ -61,7 +61,7 @@ namespace ForTheCompany.Systems
 #endif
 
         /// <summary>
-        /// 웹(WebGL) 빌드용 한글 폰트 지정 — 모든 OnGUI 시작에서 호출.
+        /// 웹(WebGL) 빌드용 한글 폰트 지정 — 모든 OnGUI 시작에서(GUIStyle을 만들기 전에) 호출.
         /// 데스크톱은 기본 폰트에 없는 한글을 OS 폰트(맑은 고딕)로 대신 그리지만,
         /// WebGL은 OS 폰트를 쓸 수 없어 한글이 전혀 표시되지 않는다. 데스크톱에서는 아무것도 하지 않는다.
         /// 폰트: Resources/Fonts/NotoSansKR-Regular.otf (SIL Open Font License 1.1)
@@ -75,7 +75,15 @@ namespace ForTheCompany.Systems
                 _webFont = Resources.Load<Font>("Fonts/NotoSansKR-Regular");
                 if (_webFont == null) Debug.LogWarning("[UITheme] 웹용 한글 폰트를 찾지 못함 — 한글이 표시되지 않을 수 있음");
             }
-            if (_webFont != null && GUI.skin.font != _webFont) GUI.skin.font = _webFont;
+            if (_webFont != null && GUI.skin.font != _webFont)
+            {
+                GUI.skin.font = _webFont;
+                // Noto Sans KR은 ascender가 1.16em이라 기본 label의 위·아래 padding 3을 그대로 두면
+                // 높이 14~16px 한 줄 라벨의 아래쪽이 잘린다 — 좌우는 두고 위·아래만 0으로 (스킨에 한 번 적용).
+                // new GUIStyle(GUI.skin.label) 복사본은 이 값을 물려받으므로, 각 OnGUI가 스타일을 만들기 전에 이 함수를 먼저 불러야 한다.
+                var lp = GUI.skin.label.padding;
+                GUI.skin.label.padding = new RectOffset(lp.left, lp.right, 0, 0);
+            }
 #endif
         }
 

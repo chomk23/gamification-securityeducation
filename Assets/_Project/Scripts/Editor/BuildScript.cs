@@ -87,8 +87,12 @@ namespace ForTheCompany.EditorTools
             // 어떤 정적 호스팅(서버 설정 불가 환경)에서도 돌아가도록 압축 해제 폴백 사용
             PlayerSettings.WebGL.decompressionFallback = true;
 
+            // Assets/WebGLTemplates/ForTheCompany — 렌더 해상도를 아래 크기로 고정(DPR 1)하고 표시 크기만 창에 맞춤,
+            // 터치 전용 기기 안내, 전체 화면은 컨테이너 단위(레이싱 iframe이 함께 보이도록)
+            PlayerSettings.WebGL.template = "PROJECT:ForTheCompany";
+
             // 기본 캔버스 960×600은 지목창(단서 전체 표시)·결과창이 들어가기에 낮다.
-            // 높이 680 = 웹사이트 iframe(1280×720) 안에 기본 템플릿 하단 바(38px)까지 함께 들어가는 최대치.
+            // 높이 680이면 웹사이트 iframe(1280×720) 안에 템플릿 하단 바(32px)까지 함께 1:1로 들어간다(UI 배치 기준 해상도).
             PlayerSettings.defaultWebScreenWidth = 1280;
             PlayerSettings.defaultWebScreenHeight = 680;
 
@@ -170,22 +174,32 @@ namespace ForTheCompany.EditorTools
                 };
                 System.Diagnostics.Process.Start(psi);
 
-                for (int i = 0; i < 25 && !IsLocalPortOpen(WebTestPort); i++)
-                    System.Threading.Thread.Sleep(200);
+                // 에디터 메인 스레드를 막으므로 짧게 폴링하고 약 3초에서 포기한다(그래도 브라우저는 연다)
+                var waited = System.Diagnostics.Stopwatch.StartNew();
+                while (waited.ElapsedMilliseconds < 2800 && !IsLocalPortOpen(WebTestPort))
+                    System.Threading.Thread.Sleep(100);
             }
 
             Debug.Log($"[Build] 웹 빌드 로컬 테스트: {url}");
             Application.OpenURL(url);
         }
 
+        // SimpleWebServer에 localhost를 주면 IPv6(::1)에서만 대기하는 경우가 있어 IPv4·IPv6를 모두 확인한다
         private static bool IsLocalPortOpen(int port)
+        {
+            return CanConnect(System.Net.IPAddress.IPv6Loopback, port)
+                || CanConnect(System.Net.IPAddress.Loopback, port);
+        }
+
+        private static bool CanConnect(System.Net.IPAddress address, int port)
         {
             try
             {
-                using (var client = new System.Net.Sockets.TcpClient())
+                using (var client = new System.Net.Sockets.TcpClient(address.AddressFamily))
                 {
-                    var pending = client.BeginConnect("127.0.0.1", port, null, null);
-                    bool connected = pending.AsyncWaitHandle.WaitOne(150) && client.Connected;
+                    // Windows는 닫힌 루프백 포트에도 연결을 재시도해 거부 응답이 늦으므로 짧은 대기 시간으로 끊는다
+                    var pending = client.BeginConnect(address, port, null, null);
+                    bool connected = pending.AsyncWaitHandle.WaitOne(100) && client.Connected;
                     if (connected) client.EndConnect(pending);
                     return connected;
                 }

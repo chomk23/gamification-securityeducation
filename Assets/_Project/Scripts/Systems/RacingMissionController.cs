@@ -77,7 +77,7 @@ namespace ForTheCompany.Systems
             var quest = QuestManager.Instance;
             if (quest != null && quest.CurrentStage != QuestManager.Stage.RacingMission) return;
 
-            // 1순위: Unity 임베드 WebView (RacingWebViewCanvas가 씬에 있으면)
+            // 1순위: Unity 임베드 WebView (RacingWebViewCanvas가 씬에 있고 데스크톱 엔진이 실패로 판정되지 않았으면)
             var bridge = RacingWebViewBridge.Instance;
             if (bridge != null && bridge.IsAvailable)
             {
@@ -87,12 +87,30 @@ namespace ForTheCompany.Systems
             }
             else
             {
-                // 폴백: 외부 브라우저
-                RacingWebViewBridge.FallbackOpenExternal();
-                Debug.Log("[Race] 외부 브라우저로 폴백 (WebView Canvas 미구성)");
+                // 폴백: 외부 브라우저 + 등수 입력 모달
+                OpenExternalFallback();
+                Debug.Log("[Race] 외부 브라우저로 폴백 (WebView 미구성 또는 엔진 실패)");
             }
 
             CurrentPhase = Phase.AwaitingRank;
+        }
+
+        /// <summary>
+        /// 임베드 WebView가 Show 뒤 준비되지 못했거나 도중에 죽었을 때 RacingWebViewBridge가 호출.
+        /// phase는 AwaitingRank 그대로 — WebView가 숨겨졌으므로 FacilityHUD가 등수 입력 모달을 그린다.
+        /// </summary>
+        public void OnEmbeddedViewFailed()
+        {
+            if (CurrentPhase != Phase.AwaitingRank) return;
+            OpenExternalFallback();
+            Debug.Log("[Race] 임베드 WebView 실패 — 외부 브라우저 + 등수 입력으로 전환");
+        }
+
+        private static void OpenExternalFallback()
+        {
+            RacingWebViewBridge.FallbackOpenExternal();
+            PlayerInteractor.Instance?.ShowToast(
+                "레이싱 화면을 불러오지 못해 브라우저로 열었습니다.\n레이스를 마친 뒤 게임으로 돌아와 결과를 골라 주세요.");
         }
 
         /// <summary>HTML에서 uwb.ExecuteJsMethod("OnRaceFinished", rank) 호출 시 실행됨</summary>

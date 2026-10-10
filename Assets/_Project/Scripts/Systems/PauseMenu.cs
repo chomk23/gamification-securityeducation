@@ -26,6 +26,13 @@ namespace ForTheCompany.Systems
         public const float DefaultVolume = 0.3f;
         private static float volume = -1f; // -1 = 아직 저장값을 읽지 않음
 
+        // 웹에서 Application.Quit()은 Unity 런타임을 멈춰 화면이 굳는다(새로고침 전까지 복구 불가) — 종료 버튼을 숨긴다
+#if UNITY_WEBGL && !UNITY_EDITOR
+        private static readonly bool QuitSupported = false;
+#else
+        private static readonly bool QuitSupported = true;
+#endif
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
@@ -147,6 +154,7 @@ namespace ForTheCompany.Systems
         private void DrawMainPage()
         {
             float w = 480, h = 560; // 라이센스 버튼 추가로 확장 (480 → 560)
+            if (!QuitSupported) h -= 60; // '게임 종료' 버튼 한 칸(btnH + gap)만큼 줄임
             float x = (Screen.width - w) * 0.5f;
             float y = (Screen.height - h) * 0.5f;
 
@@ -207,7 +215,7 @@ namespace ForTheCompany.Systems
                 "▶ 메인 메뉴로 돌아가기"))
                 ReturnToMainMenu();
 
-            if (UITheme.NeonButton(new Rect(btnX, btnY + (btnH + gap) * 5, btnW, btnH),
+            if (QuitSupported && UITheme.NeonButton(new Rect(btnX, btnY + (btnH + gap) * 5, btnW, btnH),
                 "▣ 게임 종료", UITheme.Danger))
                 QuitGame();
         }
@@ -486,6 +494,7 @@ namespace ForTheCompany.Systems
 
         private void QuitGame()
         {
+            if (!QuitSupported) return;
             Time.timeScale = 1f;
             PlayerPrefs.Save(); // 볼륨 설정 저장
 #if UNITY_EDITOR

@@ -344,7 +344,7 @@ namespace ForTheCompany.Player
                 case 1: // 연구원 (학자 톤)
                     return new[] {
                         new DialogueChoice("어제 몇 시쯤 퇴근하셨어요?",
-                            "자정 조금 전에 나왔어요. 마감 자료 정리하느라 늦었죠."),
+                            "자정 전에 나왔어요. 마감 자료 정리하느라 좀 늦었죠."),
                         new DialogueChoice("발견된 USB가 누구 건지 아세요?",
                             "아뇨, 처음 보는 거예요. 연구실 공용 USB는 전부 파란색이거든요."),
                         new DialogueChoice("시설관리자분 점검이 평소보다 길었나요?",
@@ -364,7 +364,7 @@ namespace ForTheCompany.Player
                         new DialogueChoice("보안 구역 출입은 몇 시쯤이었나요?",
                             "밤늦은 시간대였어요. 누가 언제 나갔는지는 발급 단말 기록에 남아 있어요."),
                         new DialogueChoice("카드키 기록은 믿을 만한가요?",
-                            "네, 출입할 때마다 카드 주인과 시각이 찍혀요. 다른 사람 카드로는 문이 안 열리고요."),
+                            "네, 출입할 때마다 카드 주인과 시각이 찍혀요. 찍힌 기록은 나중에 고칠 수도 없고요."),
                         new DialogueChoice("네트워크관리자분 서버실 출입은 정상인가요?",
                             "출입 권한은 있어요. 다만 횟수가 평소보다 많긴 했어요.")
                     };

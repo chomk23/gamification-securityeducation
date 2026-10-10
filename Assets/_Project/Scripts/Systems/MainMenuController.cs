@@ -17,6 +17,13 @@ namespace ForTheCompany.Systems
         private Phase phase = Phase.Menu;
         private int introIndex;
 
+        // 웹에서 Application.Quit()은 Unity 런타임을 멈춰 화면이 굳는다(새로고침 전까지 복구 불가) — 나가기 버튼·ESC 종료를 막는다
+#if UNITY_WEBGL && !UNITY_EDITOR
+        private static readonly bool QuitSupported = false;
+#else
+        private static readonly bool QuitSupported = true;
+#endif
+
         private static readonly (string title, string body)[] introSlides =
         {
             (
@@ -224,7 +231,7 @@ namespace ForTheCompany.Systems
                 "▶ 수사 시작  [엔터]", UITheme.NeonGreen))
                 BeginIntro();
 
-            if (UITheme.GhostButton(new Rect(btnX, btnY + 68, btnW, btnH - 8),
+            if (QuitSupported && UITheme.GhostButton(new Rect(btnX, btnY + 68, btnW, btnH - 8),
                 "▣ 나가기  [ESC]"))
                 QuitGame();
 
@@ -374,7 +381,7 @@ namespace ForTheCompany.Systems
                 if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter ||
                     e.keyCode == KeyCode.Space)
                     BeginIntro();
-                else if (e.keyCode == KeyCode.Escape)
+                else if (e.keyCode == KeyCode.Escape && QuitSupported)
                     QuitGame();
             }
             else
@@ -404,6 +411,7 @@ namespace ForTheCompany.Systems
         }
         public void QuitGame()
         {
+            if (!QuitSupported) return;
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else

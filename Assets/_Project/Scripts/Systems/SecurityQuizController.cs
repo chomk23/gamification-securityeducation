@@ -274,7 +274,7 @@ namespace ForTheCompany.Systems
                         "다른 직원에게 준다"
                     },
                     correctIndex = 1,
-                    successClue = "USB 안에 연구실 서버 백업 파일 일부가 들어 있다. 누가 언제 복사했는지는 기록과 대조해야 한다.",
+                    successClue = "발견된 USB는 연결하지 않은 채 보안팀에 전달됐다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -297,7 +297,7 @@ namespace ForTheCompany.Systems
                         "본인이 해당 사용자에게 직접 묻는다"
                     },
                     correctIndex = 2,
-                    successClue = "비밀번호 평문 저장 + 비정상 관리자 접근. 내부자 소행 가능성이 높다.",
+                    successClue = "서버 접속기록은 별도 저장소에 위·변조 방지 상태로 보관된다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -320,7 +320,7 @@ namespace ForTheCompany.Systems
                         "동료에게 알리고 퇴근"
                     },
                     correctIndex = 1,
-                    successClue = "사내망에서 외부 IP로 나간 대용량 전송 흔적이 있다. 발신 단말은 아직 특정되지 않았다.",
+                    successClue = "사내망 운영 매뉴얼에 외부 대용량 전송 차단 절차가 적혀 있다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -343,7 +343,7 @@ namespace ForTheCompany.Systems
                         "그냥 다시 버린다"
                     },
                     correctIndex = 1,
-                    successClue = "메모에 'adm1n_2026' 같은 관리자 패스워드. 누군가 메모를 보고 무단 접속했다.",
+                    successClue = "휴게실 게시판에 비밀번호 메모 금지 안내문이 붙어 있다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -366,7 +366,7 @@ namespace ForTheCompany.Systems
                         "본인이 가져간다"
                     },
                     correctIndex = 1,
-                    successClue = "위장 USB 충전기 + 키로거가 들어있다. 명백한 사회공학 공격 시도.",
+                    successClue = "발신자 불명 택배는 개봉 전 보안팀 검사를 거치게 돼 있다.",
                     clueReward = 2
                 },
                 new ClueData
@@ -389,7 +389,7 @@ namespace ForTheCompany.Systems
                         "친구에게 빌려준 것이라 추측"
                     },
                     correctIndex = 1,
-                    successClue = "퇴직·전보자 카드 일부가 아직 활성 상태였다. 권한 말소 지연 정황.",
+                    successClue = "카드키 분실 신고 절차가 발급 단말 옆에 안내돼 있다.",
                     clueReward = 2
                 }
             };

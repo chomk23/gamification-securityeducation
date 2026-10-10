@@ -83,27 +83,62 @@ namespace ForTheCompany.Core
             {
                 case 1: return "어젯밤 자정 전에 퇴근했고, 그 뒤로는 집에 있었어요. 연구실엔 다시 안 갔습니다.";
                 case 2: return "전 어제 23시 정각에 퇴근했어요. 그 뒤로는 사내망에 접속한 적이 없습니다.";
-                case 3: return "CCTV 점검은 저녁 7시에 끝냈고, 그 뒤로 통제실엔 들어가지 않았습니다.";
+                case 3: return "CCTV 점검은 저녁 7시 전에 끝냈고, 그 뒤로 통제실엔 들어가지 않았습니다.";
                 default: return "";
             }
+        }
+
+        // 역할(1~3)별 기록 시각 범위 — '어제 0시'부터 센 분, 양 끝 포함 (24시 이후는 '오늘').
+        // 무고 기록은 알리바이 기준 시각보다 5분 이상 이르고, 진범 기록은 20분 이상 늦다 (몇 분 차이로 헷갈리지 않게).
+        // 알리바이(GetAlibi) 기준 시각: 연구원 자정 / 네트워크관리자 23시 / 시설관리자 19시.
+        private static readonly int[,] RecordRanges =
+        {
+            // 무고 최소, 무고 최대, 진범 최소, 진범 최대
+            { 0, 0, 0, 0 },
+            { 22 * 60 + 30, 23 * 60 + 50, 24 * 60 + 40, 27 * 60 + 30 }, // 연구원 마지막 퇴실
+            { 22 * 60 + 10, 22 * 60 + 55, 23 * 60 + 25, 24 * 60 + 50 }, // 네트워크관리자 마지막 로그아웃
+            { 18 * 60 + 15, 18 * 60 + 55, 20 * 60 + 30, 23 * 60 + 30 }, // 시설관리자 마지막 퇴실
+        };
+
+        // 이번 판의 기록 시각 [역할, 0=무고 / 1=진범] — 처음 요청할 때 정하고 StartNewRun에서 비운다.
+        // StartNewRun 없이 FacilityScene을 바로 실행해도 첫 요청 때 만들어진다.
+        private static int[,] runRecordMinutes;
+
+        private static void EnsureRunRecordTimes()
+        {
+            if (runRecordMinutes != null) return;
+            runRecordMinutes = new int[4, 2];
+            for (int role = 1; role <= 3; role++)
+            {
+                runRecordMinutes[role, 0] = Random.Range(RecordRanges[role, 0], RecordRanges[role, 1] + 1);
+                runRecordMinutes[role, 1] = Random.Range(RecordRanges[role, 2], RecordRanges[role, 3] + 1);
+            }
+        }
+
+        private static string FormatRecordTime(int minutes, bool dawn)
+        {
+            int h = minutes / 60, m = minutes % 60;
+            if (h >= 24) return $"오늘 {(dawn ? "새벽 " : "")}{h - 24}시 {m:D2}분";
+            return $"어제 {h}시 {m:D2}분";
         }
 
         /// <summary>
         /// 용의자 담당 장소의 '마지막 퇴실·로그아웃 시각' 한 줄 — 그 장소의 보안 교육을 마치면 세 용의자 모두 받는다.
         /// 세 줄 모두 같은 형식이고 범행 내용은 적지 않는다 (수상한 문구만 보고 고를 수 없게).
         /// 진범(contradicts=true)의 시각만 알리바이가 말한 시각 뒤로 넘어간다 — 대조는 플레이어 몫 (중간 난이도).
-        /// 가장 늦은 시각이 항상 진범이 되지 않도록 무고한 사람도 늦은 시각을 갖는다 (예: 연구원 23:41).
+        /// 시각은 판마다 RecordRanges 안에서 새로 정하고 한 판 동안은 고정 — 다시 하기에서 지난 판 시각을 외워 맞힐 수 없게.
+        /// 범위가 역할마다 달라 가장 늦은 시각이 늘 진범이 되지는 않는다 (예: 무고한 연구원 23시대 vs 진범 시설관리자 21시대).
         /// </summary>
         public static string GetRoomRecord(int role, bool contradicts)
         {
+            if (role < 1 || role > 3) return "";
+            EnsureRunRecordTimes();
+            string time = FormatRecordTime(runRecordMinutes[role, contradicts ? 1 : 0], dawn: role == 1);
             switch (role)
             {
-                case 1: return "[연구동 출입 기록] 연구원 카드 — 마지막 퇴실: "
-                    + (contradicts ? "오늘 새벽 2시 31분" : "어제 23시 41분");
-                case 2: return "[사내망 접속 기록] 네트워크관리자 계정 — 마지막 로그아웃: "
-                    + (contradicts ? "어제 23시 38분" : "어제 22시 54분");
-                case 3: return "[통제실 출입 기록] 시설관리자 카드 — 마지막 퇴실: "
-                    + (contradicts ? "어제 22시 30분" : "어제 19시 04분");
+                case 1: return "[연구동 출입 기록] 연구원 카드 — 마지막 퇴실: " + time;
+                case 2: return "[사내망 접속 기록] 네트워크관리자 계정 — 마지막 로그아웃: " + time;
+                case 3: return "[통제실 출입 기록] 시설관리자 카드 — 마지막 퇴실: " + time;
                 default: return "";
             }
         }
@@ -128,6 +163,7 @@ namespace ForTheCompany.Core
             clearedNodeIds.Clear();
             totalClues = 0;
             spyRoleIndex = Random.Range(0, SpyRoleNames.Length);
+            runRecordMinutes = null; // 장소 기록 시각도 새 판에서 다시 정한다
             Outcome = RunOutcome.Ongoing;
             OutcomeMessage = "";
             LastEncounterRewardClues = 0;

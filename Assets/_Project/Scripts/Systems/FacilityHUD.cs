@@ -30,6 +30,8 @@ namespace ForTheCompany.Systems
         public static int EscConsumedFrame { get; private set; } = -1;
         private Vector2 inventoryScroll;
         private Vector2 endWrongScroll; // 결과창 오답 노트 스크롤
+        private Vector2 accusationClueScroll; // 지목창 수집 단서 목록 스크롤
+        private Vector2 quizScroll;           // 보안 교육 질문+선택지 스크롤 (화면이 낮아 다 안 들어갈 때만)
         private bool runEndCleanupDone;  // 결과창 진입 시 남은 창 정리 1회
 
         private void Awake()
@@ -183,9 +185,19 @@ namespace ForTheCompany.Systems
             if (pm != null && pm.IsOpen) return;
             if (IntroMonologue.IsCutsceneActive) return;
 
-            // 다른 모달 떠 있으면 토글 무시
+            // 지목창에서 I → 지목창을 닫고 수사 보드를 연다 (보드를 닫은 뒤 한세에게 다시 말을 걸면 지목창이 다시 열림)
             var partner = FindPartner();
-            if (partner != null && partner.IsMenuOpen) return;
+            if (partner != null && partner.IsMenuOpen)
+            {
+                if (kb.iKey.wasPressedThisFrame)
+                {
+                    partner.Close();
+                    IsInventoryOpen = true;
+                }
+                return;
+            }
+
+            // 다른 모달 떠 있으면 토글 무시
             var rmc = RacingMissionController.Instance;
             if (rmc != null && rmc.IsOpen) return;
             var ds = DialogueSystem.Instance;
@@ -212,9 +224,9 @@ namespace ForTheCompany.Systems
             DrawInfoPanel();      // 우상단 — 통합 UI (단서/시간/목표)
             DrawQuestAdvanceToast();
             DrawInteractionPrompt();
-            DrawToast();
             DrawQuizModal();
             DrawRacingModal();
+            DrawToast();          // 레이싱 모달 위 — Windows 레이싱 대체 경로 안내가 등수 선택 창에 가려지지 않게
             DrawAccusationModal();
             DrawDialogueBox();
             DrawInventoryPanel();
@@ -1219,24 +1231,19 @@ namespace ForTheCompany.Systems
                 normal = { textColor = inkBlack }
             };
             float qY = headerY + 110;
-            // 선택지·피드백이 모달 밖으로 밀려나지 않도록 질문 높이를 상한 클램프
+            float qW = w - 64;
+            // 질문은 자르지 않는다 — 실제 글꼴 기준 높이로 그리고, 선택지·해설은 그 아래부터 놓는다
+            float qH = qSt.CalcHeight(new GUIContent(data.quizQuestion), qW);
             int n = data.quizOptions != null ? data.quizOptions.Length : 0;
-            float btnH = 62;
-            float gap = 12;
-            float feedbackBand = 100f;                      // 하단 오답 피드백 + 힌트 버튼 영역
-            float optionsBlockH = n * btnH + (n - 1) * gap; // 선택지 전체 높이
-            // 선택지가 시작할 수 있는 최대 y (이보다 질문이 길면 질문을 잘라 표시)
-            float maxStartY = y + h - feedbackBand - optionsBlockH;
-            float rawQH = qSt.CalcHeight(new GUIContent(data.quizQuestion), w - 64);
-            float maxQH = Mathf.Max(40f, (maxStartY - 20f) - qY);
-            float qH = Mathf.Min(rawQH, maxQH);
-            GUI.Label(new Rect(x + 32, qY, w - 64, qH), data.quizQuestion, qSt);
 
-            // ── 선택지 시작 위치 (질문 아래, 단 모달 안에 들어오도록) ──
-            float startY = Mathf.Min(Mathf.Max(qY + qH + 20, y + 230), maxStartY);
+            // ── 선택지(해설) 시작 위치 — 질문 아래, 질문이 짧으면 y+230부터 ──
+            float startY = Mathf.Max(qY + qH + 20, y + 230);
 
             if (ctrl.ShowingExplanation)
             {
+                quizScroll = Vector2.zero; // 다음 문제는 맨 위부터
+                GUI.Label(new Rect(x + 32, qY, qW, qH), data.quizQuestion, qSt);
+
                 // ══════ 정답 해설 패널 — 선택지 대신 표시, [다음] 버튼으로만 진행 ══════
                 float exBottom = y + h - 88;
                 var exRect = new Rect(x + 32, startY, w - 64, exBottom - startY);
@@ -1283,10 +1290,53 @@ namespace ForTheCompany.Systems
             else
             {
                 // ══════ 선택지 버튼들 ══════
+                float btnH = 62;
+                float gap = 12;
+                float feedbackBand = 100f;              // 하단 오답 피드백 + 힌트 버튼 영역
+                float optBottom = y + h - feedbackBand; // 선택지가 내려올 수 있는 한계
+                if (n > 0 && startY + n * btnH + (n - 1) * gap > optBottom)
+                {
+                    // 공간이 모자라면 질문과의 간격·선택지 간격·높이를 줄인다 (선택지 글자가 잘리지 않는 높이까지만)
+                    var optMeasureSt = new GUIStyle(GUI.skin.label)
+                    {
+                        fontSize = 18, fontStyle = FontStyle.Bold, wordWrap = true // hover 시 굵게 — 넓은 쪽 기준
+                    };
+                    float minBtnH = 0f;
+                    for (int i = 0; i < n; i++)
+                        minBtnH = Mathf.Max(minBtnH,
+                            optMeasureSt.CalcHeight(new GUIContent(data.quizOptions[i]), w - 64 - 76));
+                    minBtnH = Mathf.Min(minBtnH + 12f, 62f);
+                    startY = qY + qH + 12;
+                    gap = 8;
+                    btnH = Mathf.Clamp((optBottom - startY - (n - 1) * gap) / n, minBtnH, 62f);
+                }
+                float optionsBottom = startY + n * btnH + (n - 1) * gap;
+
+                // 그래도 넘치면 질문+선택지를 세로 스크롤.
+                // contentRect 위치를 보기 영역과 같게 둬서 아래 좌표를 그대로 쓰고, 마우스만 스크롤만큼 옮겨 비교한다.
+                bool quizScrolling = optionsBottom > optBottom;
+                Vector2 mp = UITheme.GetMousePos();
+                bool mouseInView = true;
+                if (quizScrolling)
+                {
+                    var vsb = GUI.skin.verticalScrollbar;
+                    float sbW = vsb.fixedWidth + vsb.margin.left;
+                    var view = new Rect(x + 16, qY, w - 32, optBottom - qY);
+                    // 내용 폭 = 보이는 폭 − 세로 스크롤바 → 가로 스크롤바가 생기지 않음 (선택지 오른쪽 끝 x+w-32와 일치)
+                    var content = new Rect(x + 16, qY, w - 32 - sbW, optionsBottom - qY);
+                    mouseInView = view.Contains(mp);
+                    quizScroll = GUI.BeginScrollView(view, quizScroll, content, false, false,
+                        GUIStyle.none, GUI.skin.verticalScrollbar);
+                    mp += quizScroll;
+                }
+                else quizScroll = Vector2.zero;
+
+                GUI.Label(new Rect(x + 32, qY, qW, qH), data.quizQuestion, qSt);
+
                 for (int i = 0; i < n; i++)
                 {
                     var r = new Rect(x + 32, startY + (btnH + gap) * i, w - 64, btnH);
-                    bool hover = r.Contains(UITheme.GetMousePos());
+                    bool hover = mouseInView && r.Contains(mp);
 
                     UITheme.DrawRect(r, hover ? optHoverBg : optBg);
                     UITheme.DrawBorder(r, hover ? accentViolet : lineLight, hover ? 2.5f : 1.5f);
@@ -1310,9 +1360,11 @@ namespace ForTheCompany.Systems
                     GUI.Label(new Rect(r.x + 60, r.y, r.width - 76, r.height),
                         data.quizOptions[i], btnSt);
 
-                    if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                    // 스크롤로 가려진 선택지는 클릭되지 않게 (Button은 컨트롤 ID 순서 유지를 위해 항상 호출)
+                    if (GUI.Button(r, GUIContent.none, GUIStyle.none) && mouseInView)
                         ctrl.Answer(i);
                 }
+                if (quizScrolling) GUI.EndScrollView();
 
                 // ══════ 오답 상태 — 피드백 + 힌트 ══════
                 if (ctrl.CurrentQuestionMissed)
@@ -1604,7 +1656,7 @@ namespace ForTheCompany.Systems
                 new Color(UITheme.Bg0.r, UITheme.Bg0.g, UITheme.Bg0.b, 0.88f));
             UITheme.DrawScanlines(new Rect(0, 0, Screen.width, Screen.height), 0.05f);
 
-            // 단서 전체를 스크롤 없이 다 보여주기 위해 크게 (거의 풀스크린)
+            // 단서를 한 번에 많이 보여주기 위해 크게 (거의 풀스크린) — 넘치는 단서는 목록 스크롤
             float w = Mathf.Min(1240, Screen.width - 40);
             float h = Mathf.Min(720, Screen.height - 40);
             float x = (Screen.width - w) * 0.5f;
@@ -1639,6 +1691,17 @@ namespace ForTheCompany.Systems
             GUI.Label(new Rect(x + 40, headerY + 18, w - 80, 32),
                 "산업스파이 지목", titleSt);
 
+            // 우상단 조작 안내 (I는 HandleInventoryToggle이 지목창을 닫고 수사 보드를 연다)
+            var keyHintSt = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12, fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleRight,
+                padding = new RectOffset(0, 24, 0, 0),
+                normal = { textColor = UITheme.InkDim }
+            };
+            GUI.Label(new Rect(x, headerY + 2, w, 22),
+                "// [I] 수사 보드 · [ESC] 닫기", keyHintSt);
+
             // 본문 설명 (한 줄)
             var bodySt = new GUIStyle(GUI.skin.label)
             {
@@ -1665,7 +1728,7 @@ namespace ForTheCompany.Systems
                 new Rect(leftX + leftW + gapCol, contentY, rightW, contentBottom - contentY));
         }
 
-        /// <summary>지목 모달 좌측 — 수집 단서 전체를 스크롤 없이 표시 (3열 동적 높이, 텍스트 잘림 없음).
+        /// <summary>지목 모달 좌측 — 수집 단서 전체 표시 (3열 동적 높이, 텍스트 잘림 없음, 넘치면 세로 스크롤).
         /// 장소 기록 카드(세 용의자 모두)는 같은 보라 '알리바이 대조' 표시 — 어느 것이 모순인지는 드러내지 않는다.</summary>
         private void DrawAccusationClueList(Rect area)
         {
@@ -1695,13 +1758,7 @@ namespace ForTheCompany.Systems
                 return;
             }
 
-            // ── 3열 동적 높이 배치 — 전체 텍스트를 자르지 않고 모두 표시 ──
-            float pad = 10f;
-            float colGap = 8f;
-            int cols = 3;
-            float colW = (listArea.width - pad * 2 - colGap * (cols - 1)) / cols;
-            float textW = colW - 22;
-
+            // ── 3열 동적 높이 배치 — 카드 텍스트는 자르지 않고, 목록이 영역을 넘으면 세로 스크롤 ──
             var titleSt = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 11, fontStyle = FontStyle.Bold, wordWrap = true,
@@ -1713,11 +1770,25 @@ namespace ForTheCompany.Systems
                 normal = { textColor = UITheme.Ink }
             };
 
-            // 각 열의 현재 y (가장 짧은 열에 다음 카드 배치)
-            var colY = new float[cols];
-            for (int c = 0; c < cols; c++) colY[c] = listArea.y + pad;
+            var cardRects = new Rect[total];
+            var titleHs = new float[total];
+            var bodyHs = new float[total];
+            float contentW = listArea.width;
+            float contentH = LayoutAccusationCards(s.CollectedClues, contentW, titleSt, bodySt,
+                cardRects, titleHs, bodyHs);
+            bool overflow = contentH > listArea.height;
+            if (overflow)
+            {
+                // 세로 스크롤바 폭만큼 좁혀 다시 배치 — 내용 폭이 보이는 폭을 넘지 않아 가로 스크롤바가 생기지 않는다
+                var vsb = GUI.skin.verticalScrollbar;
+                contentW -= vsb.fixedWidth + vsb.margin.left;
+                contentH = LayoutAccusationCards(s.CollectedClues, contentW, titleSt, bodySt,
+                    cardRects, titleHs, bodyHs);
+            }
 
-            GUI.BeginGroup(new Rect(listArea.x, listArea.y, listArea.width, listArea.height));
+            // 마우스 휠은 GUI.EndScrollView가 처리
+            accusationClueScroll = GUI.BeginScrollView(listArea, accusationClueScroll,
+                new Rect(0, 0, contentW, contentH), false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
 
             for (int i = 0; i < total; i++)
             {
@@ -1725,19 +1796,10 @@ namespace ForTheCompany.Systems
                 bool evidence = clue.alibiEvidence;
                 Color accent = evidence ? UITheme.NeonViolet : GetSourceColor(clue.source);
 
-                float titleH = titleSt.CalcHeight(new GUIContent(clue.title), textW);
-                float bodyH = bodySt.CalcHeight(new GUIContent(clue.text), textW);
-                float cardH = 6 + 12 + 3 + titleH + 2 + bodyH + 8;
-
-                // 가장 짧은 열 선택
-                int col = 0;
-                for (int c = 1; c < cols; c++) if (colY[c] < colY[col]) col = c;
-
-                // BeginGroup 내부 좌표 (listArea 기준 상대)
-                float cx = pad + col * (colW + colGap);
-                float cy = colY[col] - listArea.y;
-                var cardR = new Rect(cx, cy, colW, cardH);
-                colY[col] += cardH + colGap;
+                var cardR = cardRects[i];
+                float textW = cardR.width - 22;
+                float titleH = titleHs[i];
+                float bodyH = bodyHs[i];
 
                 UITheme.DrawRect(cardR, UITheme.Bg3);
                 UITheme.DrawRect(new Rect(cardR.x, cardR.y, 3f, cardR.height), accent);
@@ -1760,7 +1822,59 @@ namespace ForTheCompany.Systems
                 GUI.Label(new Rect(cardR.x + 11, cardR.y + 22 + titleH, textW, bodyH), clue.text, bodySt);
             }
 
-            GUI.EndGroup();
+            GUI.EndScrollView();
+
+            // 아래에 가려진 단서가 남아 있으면 안내 (끝까지 내리면 사라짐)
+            if (overflow && accusationClueScroll.y < contentH - listArea.height - 2f)
+            {
+                float bandH = 22f;
+                var band = new Rect(listArea.x + 1, listArea.yMax - bandH - 1, contentW - 1, bandH);
+                UITheme.DrawRect(band, new Color(UITheme.Bg1.r, UITheme.Bg1.g, UITheme.Bg1.b, 0.94f));
+                UITheme.DrawRect(new Rect(band.x, band.y, band.width, 1), UITheme.LineStrong);
+                var moreSt = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 11, fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = UITheme.NeonCyan }
+                };
+                GUI.Label(band, "▼ 스크롤하면 단서가 더 있어요", moreSt);
+            }
+        }
+
+        /// <summary>지목창 단서 카드 배치 계산 — 가장 짧은 열에 다음 카드를 쌓는 3열 배치.
+        /// 카드 rect(스크롤 내용 좌표)와 제목·본문 높이를 채우고 전체 내용 높이를 돌려준다.</summary>
+        private static float LayoutAccusationCards(List<ClueEntry> clues, float width,
+            GUIStyle titleSt, GUIStyle bodySt, Rect[] cardRects, float[] titleHs, float[] bodyHs)
+        {
+            const float pad = 10f;
+            const float colGap = 8f;
+            const int cols = 3;
+            float colW = (width - pad * 2 - colGap * (cols - 1)) / cols;
+            float textW = colW - 22;
+
+            // 각 열의 현재 y
+            var colY = new float[cols];
+            for (int c = 0; c < cols; c++) colY[c] = pad;
+
+            for (int i = 0; i < clues.Count; i++)
+            {
+                var clue = clues[i];
+                float titleH = titleSt.CalcHeight(new GUIContent(clue.title), textW);
+                float bodyH = bodySt.CalcHeight(new GUIContent(clue.text), textW);
+                float cardH = 6 + 12 + 3 + titleH + 2 + bodyH + 8;
+
+                int col = 0;
+                for (int c = 1; c < cols; c++) if (colY[c] < colY[col]) col = c;
+
+                cardRects[i] = new Rect(pad + col * (colW + colGap), colY[col], colW, cardH);
+                titleHs[i] = titleH;
+                bodyHs[i] = bodyH;
+                colY[col] += cardH + colGap;
+            }
+
+            float bottom = 0f;
+            for (int c = 0; c < cols; c++) bottom = Mathf.Max(bottom, colY[c]);
+            return bottom - colGap + pad;
         }
 
         /// <summary>지목 모달 우측 — 용의자 3버튼.</summary>
@@ -1906,8 +2020,10 @@ namespace ForTheCompany.Systems
             GUI.Label(new Rect(x, y + (compact ? 122 : 140), w, 22), win ? "사건 해결" : "조사 실패", subKoSt);
 
             // ── 통계 패널 ──
+            // compact(웹 1280×680 등)는 행 높이를 줄여 아래 오답 노트에 공간을 넘긴다
             float statsY = y + (compact ? 150 : 178);
-            float statsH = 180;
+            float statRowH = compact ? 24f : 28f;
+            float statsH = 30 + statRowH * 5 + 10;
             var statsRect = new Rect(x + 30, statsY, w - 60, statsH);
             UITheme.DrawRect(statsRect, UITheme.Bg2);
             UITheme.DrawBorder(statsRect, UITheme.Line, 1f);
@@ -1922,14 +2038,14 @@ namespace ForTheCompany.Systems
                 "▶ MISSION DEBRIEF // STATS", statTagSt);
 
             // 통계 행들 (좌측 라벨, 우측 값)
-            DrawStatRow(statsRect, 0, "▶ 사용 시간", $"{em:D2}:{es:D2}", UITheme.NeonCyan);
-            DrawStatRow(statsRect, 1, "▶ 단서 총 수집", $"{total}개", UITheme.NeonGreen);
+            DrawStatRow(statsRect, 0, statRowH, "▶ 사용 시간", $"{em:D2}:{es:D2}", UITheme.NeonCyan);
+            DrawStatRow(statsRect, 1, statRowH, "▶ 단서 총 수집", $"{total}개", UITheme.NeonGreen);
             // 위 '단서 총 수집'은 보상 점수 합(상단 HUD와 동일)이고, 아래 두 줄은 수사 보드에 쌓인 카드 수
-            DrawStatRow(statsRect, 2, "▶ 수사 보드 카드 · NPC 대화", $"{npcCnt}장",
+            DrawStatRow(statsRect, 2, statRowH, "▶ 수사 보드 카드 · NPC 대화", $"{npcCnt}장",
                 npcCnt > 0 ? UITheme.NeonCyan : UITheme.InkFaint);
-            DrawStatRow(statsRect, 3, "▶ 수사 보드 카드 · 보안 교육", $"{envCnt}장",
+            DrawStatRow(statsRect, 3, statRowH, "▶ 수사 보드 카드 · 보안 교육", $"{envCnt}장",
                 envCnt > 0 ? UITheme.NeonYellow : UITheme.InkFaint);
-            DrawStatRow(statsRect, 4, "▶ 보안 문제 (첫 시도)",
+            DrawStatRow(statsRect, 4, statRowH, "▶ 보안 문제 (첫 시도)",
                 $"{s.quizFirstTryCorrect} 맞음 · {s.quizWrongCount} 틀림",
                 s.quizWrongCount == 0 ? UITheme.NeonGreen : UITheme.NeonYellow);
 
@@ -1946,7 +2062,15 @@ namespace ForTheCompany.Systems
 
             // ── 모티브 박스 (서사적 동기) ──
             float motiveY = msgY + 28;
-            float motiveH = compact ? 86f : 110f;
+            var motiveBodySt = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12, wordWrap = true,
+                alignment = TextAnchor.UpperLeft,
+                normal = { textColor = UITheme.Ink }
+            };
+            // 본문(3줄)을 실제 글꼴 높이로 재서 박스를 맞춘다 — 웹 Noto Sans KR은 줄 높이가 커서 고정 높이면 셋째 줄이 잘린다
+            float motiveBodyH = motiveBodySt.CalcHeight(new GUIContent(motiveText), (w - 60) - 32);
+            float motiveH = Mathf.Max(compact ? 86f : 110f, motiveBodyH + 36f);
             const float minReviewH = 60f;
             // 그래도 공간이 모자라면 동기 박스를 생략 — 오답 노트와 버튼이 우선
             bool showMotive = (y + h - 70) - (motiveY + motiveH + 38) >= minReviewH;
@@ -1967,12 +2091,6 @@ namespace ForTheCompany.Systems
                 GUI.Label(new Rect(motiveRect.x + 14, motiveRect.y + 6, motiveRect.width - 28, 22),
                     "▶ MOTIVE // 유출 동기", motiveTagSt);
 
-                var motiveBodySt = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 12, wordWrap = true,
-                    alignment = TextAnchor.UpperLeft,
-                    normal = { textColor = UITheme.Ink }
-                };
                 GUI.Label(new Rect(motiveRect.x + 16, motiveRect.y + 30, motiveRect.width - 32, motiveH - 36),
                     motiveText, motiveBodySt);
             }
@@ -2030,7 +2148,12 @@ namespace ForTheCompany.Systems
                 };
 
                 float pad = 12f;
-                float innerW = reviewRect.width - pad * 2 - 14; // 스크롤바 여유
+                var viewRect = new Rect(reviewRect.x + pad, reviewRect.y + 24,
+                    reviewRect.width - pad * 2, reviewRect.height - 30);
+                // 내용 폭 = 보이는 폭 − 세로 스크롤바(폭+왼쪽 여백). 이보다 넓으면 IMGUI가 2px짜리 가로 스크롤바를 켜고
+                // 그만큼(16px) 보이는 높이를 깎는다 — 가로 스크롤바 스타일도 none으로 꺼 둔다.
+                var vsb = GUI.skin.verticalScrollbar;
+                float innerW = viewRect.width - (vsb.fixedWidth + vsb.margin.left);
                 // 전체 콘텐츠 높이 계산
                 float contentH = 0f;
                 foreach (var wq in s.WrongQuizzes)
@@ -2039,10 +2162,9 @@ namespace ForTheCompany.Systems
                     contentH += weSt.CalcHeight(new GUIContent("→ " + wq.explanation), innerW) + 10;
                 }
 
-                var viewRect = new Rect(reviewRect.x + pad, reviewRect.y + 24,
-                    reviewRect.width - pad * 2, reviewRect.height - 30);
                 var contentRect = new Rect(0, 0, innerW, contentH);
-                endWrongScroll = GUI.BeginScrollView(viewRect, endWrongScroll, contentRect);
+                endWrongScroll = GUI.BeginScrollView(viewRect, endWrongScroll, contentRect, false, false,
+                    GUIStyle.none, GUI.skin.verticalScrollbar);
 
                 float wy = 0f;
                 foreach (var wq in s.WrongQuizzes)
@@ -2096,9 +2218,8 @@ namespace ForTheCompany.Systems
         }
 
         /// <summary>DrawEndScreen용 통계 한 줄 (좌측 라벨, 우측 값)</summary>
-        private static void DrawStatRow(Rect container, int rowIndex, string label, string value, Color accent)
+        private static void DrawStatRow(Rect container, int rowIndex, float rowH, string label, string value, Color accent)
         {
-            float rowH = 28;
             float startY = container.y + 30;
             float y = startY + rowIndex * rowH;
 
@@ -2699,8 +2820,22 @@ namespace ForTheCompany.Systems
                 fontSize = 14, fontStyle = FontStyle.Italic, wordWrap = true,
                 normal = { textColor = LtInk }
             };
-            string alibiStmt = GameSession.GetAlibi(selectedSuspectRole);
-            string alibiShown = string.IsNullOrEmpty(alibiStmt) ? "(진술 없음)" : $"“{alibiStmt}”";
+            // 알리바이는 그 용의자와 첫 대화할 때 처음 듣는다 — 첫 증언(INTERVIEW) 카드가 생기기 전에는 숨긴다
+            bool interviewed = false;
+            foreach (var c in s.CollectedClues)
+                if (c.tag == "INTERVIEW" && c.relatedRole == selectedSuspectRole) { interviewed = true; break; }
+            string alibiShown;
+            if (!interviewed)
+            {
+                alibiShown = "아직 만나지 않았어요 — 대화하면 알리바이가 기록됩니다";
+                alibiSt.fontStyle = FontStyle.Normal;
+                alibiSt.normal.textColor = LtInkSub;
+            }
+            else
+            {
+                string alibiStmt = GameSession.GetAlibi(selectedSuspectRole);
+                alibiShown = string.IsNullOrEmpty(alibiStmt) ? "(진술 없음)" : $"“{alibiStmt}”";
+            }
             float alibiH = alibiSt.CalcHeight(new GUIContent(alibiShown), area.width - 44);
             GUI.Label(new Rect(area.x + 16, cy, area.width - 32, alibiH), alibiShown, alibiSt);
             cy += alibiH + 8;

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>For The Company — 산업보안 추리 게임</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+#if SHOW_DIAGNOSTICS
+    <link rel="stylesheet" href="<<<TemplateData/diagnostics.css>>>">
+    <script src="<<<TemplateData/diagnostics.js>>>"></script>
+#endif
+#if DEVELOPMENT_PLAYER
+  <script src="<<<TemplateData/profiler.js>>>"></script>
+#endif
+  </head>
+  <body>
+    <!-- 전체 화면은 이 컨테이너에 건다. 레이싱 iframe(RacingIframe.jslib)이 전체 화면 중에 이 안에 붙어야 보이기 때문 -->
+    <div id="unity-container">
+      <div id="unity-frame">
+        <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+        <div id="unity-loading-bar">
+          <div id="unity-loading-title">FOR THE COMPANY</div>
+          <div id="unity-progress-bar-empty">
+            <div id="unity-progress-bar-full"></div>
+          </div>
+          <div id="unity-loading-text">불러오는 중…</div>
+        </div>
+        <div id="unity-warning"> </div>
+        <div id="unity-footer">
+          <div id="unity-build-title">For The Company — 산업보안 추리 게임</div>
+#if SHOW_DIAGNOSTICS
+          <img id="diagnostics-icon" src="TemplateData/webmemd-icon.png">
+#endif
+          <button id="unity-fullscreen-button" type="button" title="전체 화면" aria-label="전체 화면">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+              <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="mobile-notice">
+        <div id="mobile-notice-card">
+          <div id="mobile-notice-tag">// FOR THE COMPANY</div>
+          <p id="mobile-notice-title">이 게임은 PC(키보드·마우스)에서 플레이할 수 있어요</p>
+          <p id="mobile-notice-body">
+            휴대폰·태블릿에서는 이동과 대화 진행에 필요한 키보드를 쓸 수 없어요.<br>
+            용량이 큰 게임 데이터는 아직 내려받지 않았어요.
+          </p>
+          <a href="#" id="mobile-notice-continue">그래도 실행</a>
+        </div>
+      </div>
+    </div>
+    <script>
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var footer = document.querySelector("#unity-footer");
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: unityShowBanner,
+      };
+
+      // 렌더 해상도(Screen 크기)는 캔버스 width/height 속성으로 고정하고, CSS 표시 크기만 창에 맞춰 늘리고 줄인다.
+      // 기본값이면 백버퍼가 CSS 크기×devicePixelRatio로 커져서, 고정 px로 그리는 IMGUI가 고해상도 화면에서 작게 보인다.
+      config.matchWebGLToCanvasSize = false;
+      config.devicePixelRatio = 1;
+
+      var gameWidth = canvas.width;
+      var gameHeight = canvas.height;
+
+      function getFullscreenElement() {
+        return document.fullscreenElement || document.webkitFullscreenElement || null;
+      }
+
+      // 비율을 유지한 채 창(전체 화면이면 화면) 안에 최대한 크게 맞춘다
+      function fitCanvas() {
+        var fullscreen = getFullscreenElement() === container;
+        container.classList.toggle("is-fullscreen", fullscreen);
+        var availWidth = container.clientWidth;
+        var availHeight = container.clientHeight - (fullscreen ? 0 : footer.offsetHeight);
+        var scale = Math.min(availWidth / gameWidth, availHeight / gameHeight);
+        if (!(scale > 0)) scale = 1;
+        var width = Math.max(1, Math.floor(gameWidth * scale));
+        var height = Math.max(1, Math.floor(gameHeight * scale));
+        canvas.style.width = width + "px";
+        canvas.style.height = height + "px";
+        footer.style.width = width + "px";
+      }
+
+      function onFullscreenChange() {
+        fitCanvas();
+        requestAnimationFrame(fitCanvas);
+      }
+
+      window.addEventListener("resize", fitCanvas);
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+      document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+      fitCanvas();
+
+      // unityInstance.SetFullscreen은 캔버스만 전체 화면으로 올려서 그 밖의 DOM(레이싱 iframe)이 가려진다
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var requestFullscreen = container.requestFullscreen || container.webkitRequestFullscreen;
+      if (!requestFullscreen) fullscreenButton.style.display = "none";
+      fullscreenButton.onclick = () => {
+        try {
+          var request = requestFullscreen.call(container);
+          if (request && request.catch) request.catch(() => {});
+        } catch (e) {
+          console.warn("전체 화면 전환 실패:", e);
+        }
+        canvas.focus();
+      };
+
+#if BACKGROUND_FILENAME
+      canvas.style.background = "url('" + buildUrl + "/{{{ BACKGROUND_FILENAME.replace(/'/g, '%27') }}}') center / cover";
+#endif
+
+      var unityStarted = false;
+
+      function startUnity() {
+        if (unityStarted) return;
+        unityStarted = true;
+
+        var loadingBar = document.querySelector("#unity-loading-bar");
+        var progressFull = document.querySelector("#unity-progress-bar-full");
+        var loadingText = document.querySelector("#unity-loading-text");
+        loadingBar.style.display = "block";
+
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = () => {
+          createUnityInstance(canvas, config, (progress) => {
+            progressFull.style.width = 100 * progress + "%";
+            loadingText.textContent = "불러오는 중… " + Math.round(100 * progress) + "%";
+          }).then((unityInstance) => {
+            loadingBar.style.display = "none";
+#if SHOW_DIAGNOSTICS
+            document.getElementById("diagnostics-icon").onclick = () => {
+              unityDiagnostics.openDiagnosticsDiv(unityInstance.GetMetricsInfo);
+            };
+#endif
+
+#if DEVELOPMENT_PLAYER
+            var profile = unityProfiler.createButton(unityInstance);
+            profile.style.marginLeft = '5px';
+            document.querySelector("#unity-build-title").appendChild(profile);
+
+            // Unloading web content from DOM so that browser GC can run can be tricky to get right.
+            // This code snippet shows how to correctly implement a Unity content Unload mechanism to a web page.
+
+            // Unloading Unity content enables a web page to reclaim the memory used by Unity, e.g. for
+            // the purpose of later loading another Unity content instance on the _same_ web page.
+
+            // When using this functionality, take caution to carefully make sure to clear all JavaScript code,
+            // DOM element and event handler references to the old content you may have retained, or
+            // otherwise the browser's garbage collector will be unable to reclaim the old page.
+
+            // N.b. Unity content does _not_ need to be manually unloaded when the user is navigating away from
+            // the current page to another web page. The browser will take care to clear memory of old visited
+            // pages automatically. This functionality is only needed if you want to switch between loading
+            // multiple Unity builds on a single web page.
+            var quit = document.createElement("button");
+            quit.style = "margin-left: 5px; background-color: lightgray; border: none; padding: 5px; cursor: pointer";
+            quit.innerHTML = "Unload";
+            document.querySelector("#unity-build-title").appendChild(quit);
+            quit.onclick = () => {
+              // Quit Unity application execution
+              unityInstance.Quit().then(() => {
+                unityProfiler.shutDown();
+                // Remove DOM elements from the page so GC can run
+                document.querySelector("#unity-container").remove();
+                canvas = null;
+                // Remover script elements from the page so GC can run
+                script.remove();
+                script = null;
+              });
+            };
+#endif
+          }).catch((message) => {
+            alert(message);
+          });
+        };
+
+        document.body.appendChild(script);
+      }
+
+      // 이동·대화 진행이 키보드 전용이라 터치 기기에서는 진행할 수 없다.
+      // 용량이 큰 게임 데이터를 받기 전에 안내하고 멈춘다(iPadOS Safari는 Macintosh UA를 보내므로 터치 지점 수로 구분).
+      var isTouchDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+
+      if (isTouchDevice) {
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+
+#if SHOW_DIAGNOSTICS
+        // position the diagnostics icon in the corner on the canvas
+        let diagnostics_icon = document.getElementById("diagnostics-icon");
+        diagnostics_icon.style.position = "fixed";
+        diagnostics_icon.style.bottom = "10px";
+        diagnostics_icon.style.right = "0px";
+        canvas.after(diagnostics_icon);
+#endif
+
+        var mobileNotice = document.querySelector("#mobile-notice");
+        mobileNotice.style.display = "flex";
+        document.querySelector("#mobile-notice-continue").onclick = (event) => {
+          event.preventDefault();
+          mobileNotice.style.display = "none";
+          startUnity();
+        };
+      } else {
+        startUnity();
+      }
+
+    </script>
+  </body>
+</html>
