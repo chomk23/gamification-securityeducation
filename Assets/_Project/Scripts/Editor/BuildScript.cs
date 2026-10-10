@@ -109,12 +109,15 @@ namespace ForTheCompany.EditorTools
                 long sizeMb = (long)summary.totalSize / (1024 * 1024);
                 Debug.Log($"[Build] ✓ 성공 — {WebBuildFolder} ({sizeMb} MB, {summary.totalTime})");
                 EditorUtility.RevealInFinder(Path.Combine(fullPath, "index.html"));
-                EditorUtility.DisplayDialog(
+                bool openNow = EditorUtility.DisplayDialog(
                     "WebGL 빌드 완료",
                     $"경로: {WebBuildFolder}\n\n" +
                     "이 폴더 전체(index.html, Build/, StreamingAssets/, TemplateData/)를\n" +
-                    "웹사이트에 업로드하고 index.html로 링크하거나 iframe으로 넣으세요.",
-                    "확인");
+                    "웹사이트에 업로드하고 index.html로 링크하거나 iframe으로 넣으세요.\n\n" +
+                    "※ index.html을 더블클릭하면 브라우저 보안 때문에 실행되지 않습니다.\n" +
+                    "   PC에서 확인하려면 '브라우저에서 열기'를 누르세요.",
+                    "브라우저에서 열기", "닫기");
+                if (openNow) RunWebGLLocal();
             }
             else
             {
@@ -125,7 +128,75 @@ namespace ForTheCompany.EditorTools
             }
         }
 
-        [MenuItem("For The Company/Open Build Folder", priority = 3)]
+        private const int WebTestPort = 8090;
+
+        /// <summary>
+        /// 빌드된 웹 버전을 로컬 웹 서버로 띄워 브라우저에서 연다.
+        /// index.html을 더블클릭(file://)하면 브라우저가 게임 파일 다운로드를 막아 실행되지 않는다.
+        /// Unity에 포함된 테스트 서버(SimpleWebServer)를 Unity의 mono로 실행하며, Unity를 닫으면 서버도 종료된다.
+        /// </summary>
+        [MenuItem("For The Company/Run WebGL Build (Local Test)", priority = 3)]
+        public static void RunWebGLLocal()
+        {
+            string buildPath = Path.GetFullPath(WebBuildFolder);
+            if (!File.Exists(Path.Combine(buildPath, "index.html")))
+            {
+                EditorUtility.DisplayDialog("빌드 없음",
+                    "아직 웹 빌드가 없습니다. 'Build WebGL (Website)'를 먼저 실행하세요.", "확인");
+                return;
+            }
+
+            string url = $"http://localhost:{WebTestPort}/";
+            if (!IsLocalPortOpen(WebTestPort))
+            {
+                string mono = Path.Combine(EditorApplication.applicationContentsPath, "MonoBleedingEdge", "bin",
+                    Application.platform == RuntimePlatform.WindowsEditor ? "mono.exe" : "mono");
+                string server = Path.Combine(
+                    BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.WebGL, BuildOptions.None),
+                    "BuildTools", "SimpleWebServer.exe");
+                if (!File.Exists(mono) || !File.Exists(server))
+                {
+                    EditorUtility.DisplayDialog("테스트 서버 없음",
+                        $"Unity 테스트 서버를 찾지 못했습니다.\n{server}", "확인");
+                    return;
+                }
+
+                // 마지막 인자(에디터 PID): Unity가 종료되면 서버도 스스로 종료된다
+                var psi = new System.Diagnostics.ProcessStartInfo(mono,
+                    $"\"{server}\" \"{buildPath}\" {url} {System.Diagnostics.Process.GetCurrentProcess().Id}")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                System.Diagnostics.Process.Start(psi);
+
+                for (int i = 0; i < 25 && !IsLocalPortOpen(WebTestPort); i++)
+                    System.Threading.Thread.Sleep(200);
+            }
+
+            Debug.Log($"[Build] 웹 빌드 로컬 테스트: {url}");
+            Application.OpenURL(url);
+        }
+
+        private static bool IsLocalPortOpen(int port)
+        {
+            try
+            {
+                using (var client = new System.Net.Sockets.TcpClient())
+                {
+                    var pending = client.BeginConnect("127.0.0.1", port, null, null);
+                    bool connected = pending.AsyncWaitHandle.WaitOne(150) && client.Connected;
+                    if (connected) client.EndConnect(pending);
+                    return connected;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        [MenuItem("For The Company/Open Build Folder", priority = 4)]
         public static void OpenBuildFolder()
         {
             string fullPath = Path.Combine(Directory.GetCurrentDirectory(), BuildFolder);
